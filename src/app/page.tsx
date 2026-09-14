@@ -14,15 +14,17 @@ export default async function HomePage() {
   });
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-10">
-      <p className="text-sm font-semibold uppercase tracking-[0.18em] text-moss-deep">Local help, actually available</p>
-      <h1 className="serif mt-3 max-w-3xl text-5xl leading-[1.05] sm:text-6xl">
+    <main className="mx-auto max-w-6xl px-4 py-4 sm:py-6">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-moss-deep sm:text-xs">
+        Local help, actually available
+      </p>
+      <h1 className="serif mt-1.5 max-w-3xl text-base font-medium leading-snug sm:mt-2 sm:text-lg">
         Find a professional nearby who can actually help.
       </h1>
-      <p className="mt-5 max-w-2xl text-lg text-ink-soft">
+      <p className="mt-1.5 hidden max-w-2xl text-ink-soft sm:mt-2 sm:block sm:text-base">
         Not a stale directory. 1mileaway shows people who serve your area and have recently said they are free to take work.
       </p>
-      <div className="mt-8">
+      <div className="mt-3 sm:mt-4">
         <SearchBox defaultLocation="" showUrgencyTabs />
       </div>
 
