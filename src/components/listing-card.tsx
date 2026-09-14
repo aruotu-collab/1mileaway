@@ -23,6 +23,7 @@ type ListingCardProps = {
   resultsHref?: string;
   showProfileLink?: boolean;
   fromVisitor?: boolean;
+  phone?: string | null;
 };
 
 export function ListingCard(props: ListingCardProps) {
@@ -80,16 +81,25 @@ export function ListingCard(props: ListingCardProps) {
         ) : null}
       </dl>
       <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-        <form action={startCall} className="flex-1">
-          <input type="hidden" name="businessId" value={props.businessId} />
-          <input type="hidden" name="professionId" value={props.professionId ?? ""} />
-          <input type="hidden" name="locationId" value={props.locationId ?? ""} />
-          <input type="hidden" name="country" value={props.country} />
-          <button className="btn btn-primary w-full" type="submit">
-            <PhoneIcon />
-            Call now
-          </button>
-        </form>
+        {props.phone ? (
+          <form action={startCall} className="flex-1">
+            <input type="hidden" name="businessId" value={props.businessId} />
+            <input type="hidden" name="professionId" value={props.professionId ?? ""} />
+            <input type="hidden" name="locationId" value={props.locationId ?? ""} />
+            <input type="hidden" name="country" value={props.country} />
+            <input type="hidden" name="returnTo" value={props.resultsHref ?? `/${props.country}/p/${props.slug}`} />
+            <button className="btn btn-primary w-full" type="submit">
+              <PhoneIcon />
+              Call now
+            </button>
+          </form>
+        ) : (
+          <p className="flex-1 rounded-2xl border border-line bg-paper px-4 py-3 text-sm text-ink-soft">
+            {props.claimStatus === "UNCLAIMED"
+              ? "This listing is not claimed yet, so we do not connect a phone number."
+              : "This professional has not added a phone number yet."}
+          </p>
+        )}
         {props.showProfileLink === false ? null : (
           <Link href={profileHref} className="btn btn-ghost flex-1">
             {props.claimStatus === "UNCLAIMED" ? "Is this your business?" : "View profile"}

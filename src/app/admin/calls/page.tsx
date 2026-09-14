@@ -12,7 +12,7 @@ export default async function AdminCallsPage() {
       <ul className="mt-6 grid gap-3">
         {calls.map((call) => (
           <li key={call.id} className="card p-4 text-sm">
-            {call.business.name} · {call.status} · {call.durationSeconds}s · lead {call.lead?.status ?? "none"}
+            {call.business.name} · {call.status} · {call.toNumber ?? "no number"} · lead {call.lead?.status ?? "none"}
           </li>
         ))}
       </ul>

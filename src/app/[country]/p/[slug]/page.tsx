@@ -6,6 +6,7 @@ import { ListingCard } from "@/components/listing-card";
 import { ClaimListingCta } from "@/components/claim-listing-cta";
 import { isAvailabilityLive } from "@/lib/availability/engine";
 import { CLAIM_STATUS } from "@/lib/constants";
+import { publicCallPhone } from "@/lib/phone";
 
 export async function generateMetadata({
   params,
@@ -82,6 +83,7 @@ export default async function ProfilePage({
         professionId={profession?.professionId}
         locationId={business.locations[0]?.locationId}
         showProfileLink={false}
+        phone={publicCallPhone(business)}
       />
       {business.claimStatus === CLAIM_STATUS.UNCLAIMED ? (
         <ClaimListingCta

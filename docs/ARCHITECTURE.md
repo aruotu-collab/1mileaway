@@ -9,7 +9,7 @@ Domain logic lives under `src/lib`:
 - `leads` — qualification, trial, trust lead
 - `payments` — Stripe or mock checkout
 - `email` — Resend or mock
-- `calls` — provider interface + simulator
+- `calls` — customer taps Call now and rings the professional’s number directly
 - `ranking` — recommended sort + admin explanation
 - `seo` — indexability
 - `locations` — marketplace queries

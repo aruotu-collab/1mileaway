@@ -9,6 +9,7 @@ export type CreateUnclaimedInput = {
   locationId: string;
   website?: string | null;
   phone?: string | null;
+  phoneReal?: string | null;
   about?: string | null;
   contactEmailSource?: string | null;
   dataProvenance?: string | null;
@@ -52,12 +53,12 @@ export async function createUnclaimedListingRecord(input: CreateUnclaimedInput) 
       dataProvenance: input.dataProvenance ?? null,
       outreachStatus: email ? OUTREACH.ELIGIBLE : OUTREACH.NO_EMAIL,
       website: input.website || null,
-      phoneDisplay: input.phone || null,
+      phoneDisplay: input.phone || input.phoneReal || null,
       about: input.about || null,
       professions: { create: { professionId: input.professionId } },
       locations: { create: { locationId: input.locationId, radiusMiles: 3 } },
       availability: { create: { status: "UNKNOWN", source: input.availabilitySource ?? "import" } },
-      trackingNumbers: { create: { number: `SIM-${slugify(input.name).slice(0, 8).toUpperCase()}` } },
+      phoneReal: input.phoneReal || null,
     },
   });
   return { business, created: true as const, reason: null };

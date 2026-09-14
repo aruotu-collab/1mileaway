@@ -9,7 +9,6 @@ export const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS ?? "aruotu@gma
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean);
 
-export const QUALIFIED_CALL_SECONDS = Number(process.env.QUALIFIED_CALL_SECONDS ?? 45);
 export const AVAILABLE_NOW_HOURS = 4;
 
 export const ROLES = {

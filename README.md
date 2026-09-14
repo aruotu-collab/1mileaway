@@ -29,21 +29,21 @@ Set `DEV_MAGIC_BYPASS=1` to sign in immediately after submitting an email (local
 
 ## Stack
 
-Next.js App Router, TypeScript, Tailwind, Prisma/SQLite locally (Postgres/Supabase in production), Vitest. Stripe, Resend, Supabase Auth and Twilio are adapters: when keys are missing, mock mode keeps the product testable.
+Next.js App Router, TypeScript, Tailwind, Prisma/SQLite locally (Postgres/Supabase in production), Vitest. Stripe, Resend and Supabase Auth are adapters: when keys are missing, mock mode keeps the product testable. Customers call the professional’s phone directly — there is no Twilio or tracking number in between.
 
 ## Core model
 
 1. Free trial of qualified leads (default 5, configurable globally / country / profession / professional).
 2. One unpaid trust lead after the trial.
 3. Pay that lead in local currency to continue. Webhook (or mock checkout) is authoritative.
-4. Missed or short calls do not consume the trial.
+4. Missed or “not a job” confirmations do not consume the trial.
 5. An outstanding lead pauses Available Now but does not delete the listing.
 
 ## Useful routes
 
 - `/gb/plumbers/catford` and `/gb/plumbers/lewisham`
 - `/gb/emergency-plumbers/catford`
-- `/call/[id]` — call-tracking simulator
+- `/call/[id]` — rings the professional’s number directly
 - `/professional` — I WANT WORK
 - `/admin` — control centre
 - `/api/webhooks/stripe` and `/api/webhooks/resend`

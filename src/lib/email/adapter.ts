@@ -9,6 +9,7 @@ export type EmailTemplate =
   | "payment_request"
   | "payment_settled"
   | "lead_qualified"
+  | "inbound_call"
   | "claim_invite"
   | "outreach_day3"
   | "outreach_day8";

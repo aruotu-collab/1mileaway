@@ -4,7 +4,9 @@ import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
 import { wantWork, imBusy } from "@/app/actions/availability";
 import { payOutstanding } from "@/app/actions/payments";
+import { updateListingPhone } from "@/app/actions/listing";
 import { AvailabilityBadge } from "@/components/availability-badge";
+import { LeadConfirmActions } from "@/components/lead-confirm";
 import { isAvailabilityLive } from "@/lib/availability/engine";
 import { formatMoney } from "@/lib/utils";
 import { PAYMENT_STATES } from "@/lib/constants";
@@ -66,6 +68,30 @@ export default async function ProfessionalHome({
         Payment state: {biz.paymentState.replace(/_/g, " ").toLowerCase()}. Trial remaining: {biz.trialBalance?.remaining ?? 0}.
       </p>
 
+      <section className="card mt-6 p-5">
+        <h2 className="serif text-2xl">Phone customers call</h2>
+        <p className="mt-2 text-ink-soft">
+          Call now rings this number directly. Use the phone you actually answer.
+        </p>
+        <form action={updateListingPhone} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+          <label>
+            <span className="sr-only">Phone number</span>
+            <input
+              className="w-full rounded-2xl border border-line bg-paper px-4 py-3"
+              type="tel"
+              name="phone"
+              autoComplete="tel"
+              defaultValue={biz.phoneReal ?? biz.phoneDisplay ?? ""}
+              placeholder="020 7946 0101"
+              required
+            />
+          </label>
+          <button className="btn btn-primary" type="submit">
+            Save number
+          </button>
+        </form>
+      </section>
+
       {open ? (
         <section className="card mt-6 p-5">
           <h2 className="serif text-2xl">Settle this lead to continue</h2>
@@ -118,7 +144,8 @@ export default async function ProfessionalHome({
         <ul className="mt-3 grid gap-2">
           {biz.leads.map((lead) => (
             <li key={lead.id} className="card p-4 text-sm">
-              {lead.status} · {lead.chargingMode ?? "unqualified"} · {lead.visitorPhone ?? "unknown caller"}
+              {lead.status} · {lead.chargingMode ?? "unqualified"} · {lead.visitorPhone ?? "customer called you"}
+              <LeadConfirmActions leadId={lead.id} status={lead.status} />
             </li>
           ))}
         </ul>

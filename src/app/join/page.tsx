@@ -84,6 +84,17 @@ export default async function JoinPage({
           <span className="mb-1 block text-sm font-medium">Work email</span>
           <input className="w-full rounded-2xl border border-line bg-paper px-4 py-3" type="email" name="email" required />
         </label>
+        <label>
+          <span className="mb-1 block text-sm font-medium">Phone customers should call</span>
+          <input
+            className="w-full rounded-2xl border border-line bg-paper px-4 py-3"
+            type="tel"
+            name="phone"
+            autoComplete="tel"
+            placeholder="020 7946 0101"
+            required
+          />
+        </label>
         <button className="btn btn-primary" type="submit">
           Create listing
         </button>

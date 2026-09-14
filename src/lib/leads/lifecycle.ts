@@ -1,11 +1,5 @@
 import { prisma } from "@/lib/db";
-import {
-  AVAILABILITY,
-  CHARGING,
-  LEAD_STATUS,
-  PAYMENT_STATES,
-  QUALIFIED_CALL_SECONDS,
-} from "@/lib/constants";
+import { AVAILABILITY, CHARGING, LEAD_STATUS, PAYMENT_STATES } from "@/lib/constants";
 import { writeAudit } from "@/lib/admin/audit";
 import { sendEmail, availabilityActionHtml, paymentRequestHtml } from "@/lib/email/adapter";
 import { createCheckoutForLead } from "@/lib/payments/adapter";
@@ -53,41 +47,50 @@ export async function snapshotLeadPrice(countryId: string, professionId: string)
   return specific ?? prices.find((p) => !p.professionId) ?? null;
 }
 
-export async function qualifyCall(callId: string) {
-  const call = await prisma.call.findUnique({
-    where: { id: callId },
-    include: { lead: true, business: { include: { trialBalance: true, users: { include: { profile: true } } } } },
-  });
-  if (!call) throw new Error("Call not found");
-  if (call.lead?.status === LEAD_STATUS.QUALIFIED) return call.lead;
-  if (call.durationSeconds < QUALIFIED_CALL_SECONDS) {
-    if (call.lead) {
-      await prisma.lead.update({
-        where: { id: call.lead.id },
-        data: { status: LEAD_STATUS.DISQUALIFIED, qualification: "BELOW_THRESHOLD" },
-      });
-    }
-    return null;
+export async function rejectLead(leadId: string, reason = "MISSED") {
+  const lead = await prisma.lead.findUnique({ where: { id: leadId }, include: { call: true } });
+  if (!lead) throw new Error("Lead not found");
+  if (lead.status === LEAD_STATUS.QUALIFIED || lead.status === LEAD_STATUS.SETTLED) {
+    return lead;
   }
+  const updated = await prisma.lead.update({
+    where: { id: lead.id },
+    data: { status: LEAD_STATUS.DISQUALIFIED, qualification: reason },
+  });
+  if (lead.callId) {
+    await prisma.call.update({
+      where: { id: lead.callId },
+      data: { status: "missed", endedAt: new Date(), events: { create: { type: "missed" } } },
+    });
+  }
+  return updated;
+}
 
-  const lead =
-    call.lead ??
-    (await prisma.lead.create({
+export async function qualifyLead(leadId: string) {
+  const lead = await prisma.lead.findUnique({
+    where: { id: leadId },
+    include: {
+      call: true,
+      business: { include: { trialBalance: true, users: { include: { profile: true } } } },
+    },
+  });
+  if (!lead) throw new Error("Lead not found");
+  if (lead.status === LEAD_STATUS.QUALIFIED || lead.status === LEAD_STATUS.SETTLED) return lead;
+
+  if (lead.callId) {
+    await prisma.call.update({
+      where: { id: lead.callId },
       data: {
-        businessId: call.businessId,
-        countryId: call.business.countryId,
-        professionId: (
-          await prisma.businessProfession.findFirst({ where: { businessId: call.businessId } })
-        )?.professionId ?? (await prisma.profession.findFirstOrThrow()).id,
-        callId: call.id,
-        visitorPhone: call.fromNumber,
-        status: LEAD_STATUS.CREATED,
+        status: "completed",
+        endedAt: new Date(),
+        events: { create: { type: "connected" } },
       },
-    }));
+    });
+  }
 
   return prisma.$transaction(async (tx) => {
     const business = await tx.business.findUniqueOrThrow({
-      where: { id: call.businessId },
+      where: { id: lead.businessId },
       include: { trialBalance: true },
     });
     const open = await tx.outstandingLeadBalance.findFirst({
@@ -159,13 +162,13 @@ export async function qualifyCall(callId: string) {
       metadata: { chargingMode: result.chargingMode },
     });
 
-    const owner = call.business.users[0]?.profile;
+    const owner = lead.business.users[0]?.profile;
     if (owner) {
       const token = randomToken();
       await prisma.actionToken.create({
         data: {
           purpose: "availability",
-          businessId: call.businessId,
+          businessId: lead.businessId,
           tokenHash: hashToken(token),
           expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         },
@@ -173,7 +176,7 @@ export async function qualifyCall(callId: string) {
       if (result.chargingMode === CHARGING.FREE_TRIAL) {
         await sendEmail({
           to: owner.email,
-          businessId: call.businessId,
+          businessId: lead.businessId,
           template: "lead_qualified",
           subject: "New qualified lead — still available?",
           html: `<p>A customer was connected through 1mileaway.</p>${availabilityActionHtml(token)}`,
@@ -183,13 +186,13 @@ export async function qualifyCall(callId: string) {
         const amount = formatMoney(result.lead.priceMinor ?? 0, result.lead.currency ?? "GBP");
         await sendEmail({
           to: owner.email,
-          businessId: call.businessId,
+          businessId: lead.businessId,
           template: "payment_request",
           subject: "Settle this lead to continue",
           html: paymentRequestHtml(checkout.url, amount),
         });
         await setAvailability({
-          businessId: call.businessId,
+          businessId: lead.businessId,
           status: AVAILABILITY.UNKNOWN,
           source: "outstanding_lead",
         });

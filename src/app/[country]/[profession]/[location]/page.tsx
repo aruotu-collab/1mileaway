@@ -7,6 +7,7 @@ import { ListingCard } from "@/components/listing-card";
 import { AddYourBusinessCta } from "@/components/claim-listing-cta";
 import { PhoneIcon } from "@/components/phone-icon";
 import { startCall } from "@/app/actions/calls";
+import { publicCallPhone } from "@/lib/phone";
 import { getActiveCountry, getLocationBySlug, getProfessionBySlug, listingsFor, nearbyLocations } from "@/lib/locations/service";
 import { isIndexable, robotsDirective } from "@/lib/seo/indexability";
 import { prisma } from "@/lib/db";
@@ -185,18 +186,22 @@ export default async function LocationProfessionPage({
               locationId={locationRow.id}
               resultsHref={resultsHref}
               fromVisitor={Boolean(visitorOrigin)}
+              phone={publicCallPhone(featured)}
             />
           </div>
-          <form action={startCall} className="sticky bottom-3 z-20 mt-3 sm:hidden">
-            <input type="hidden" name="businessId" value={featured.id} />
-            <input type="hidden" name="professionId" value={professionRow.professionId} />
-            <input type="hidden" name="locationId" value={locationRow.id} />
-            <input type="hidden" name="country" value={country} />
-            <button className="btn btn-primary w-full shadow-lg" type="submit">
-              <PhoneIcon />
-              Call {featured.name}
-            </button>
-          </form>
+          {publicCallPhone(featured) ? (
+            <form action={startCall} className="sticky bottom-3 z-20 mt-3 sm:hidden">
+              <input type="hidden" name="businessId" value={featured.id} />
+              <input type="hidden" name="professionId" value={professionRow.professionId} />
+              <input type="hidden" name="locationId" value={locationRow.id} />
+              <input type="hidden" name="country" value={country} />
+              <input type="hidden" name="returnTo" value={resultsHref} />
+              <button className="btn btn-primary w-full shadow-lg" type="submit">
+                <PhoneIcon />
+                Call {featured.name}
+              </button>
+            </form>
+          ) : null}
         </section>
       ) : (
         <p className="card mt-8 p-6">No professionals are listed for this area yet.</p>
@@ -226,6 +231,7 @@ export default async function LocationProfessionPage({
                 locationId={locationRow.id}
                 resultsHref={resultsHref}
                 fromVisitor={Boolean(visitorOrigin)}
+                phone={publicCallPhone(listing)}
               />
             ))}
           </div>

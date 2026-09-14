@@ -9,7 +9,8 @@ export async function createOwnListing(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const professionId = String(formData.get("professionId") ?? "");
   const locationId = String(formData.get("locationId") ?? "");
-  if (!name || !email.includes("@") || !professionId || !locationId) {
+  const phone = String(formData.get("phone") ?? "").trim();
+  if (!name || !email.includes("@") || !professionId || !locationId || !phone) {
     redirect("/join?error=missing");
   }
 
@@ -18,6 +19,8 @@ export async function createOwnListing(formData: FormData) {
     email,
     professionId,
     locationId,
+    phone,
+    phoneReal: phone,
     about: "Added by the professional from join.",
     contactEmailSource: "join",
     dataProvenance: "self_serve",
