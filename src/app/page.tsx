@@ -18,7 +18,7 @@ export default async function HomePage() {
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-moss-deep sm:text-xs">
         Local help, actually available
       </p>
-      <h1 className="serif mt-1.5 max-w-3xl text-base font-medium leading-snug sm:mt-2 sm:text-lg">
+      <h1 className="serif mt-1.5 max-w-3xl text-2xl font-medium leading-snug sm:mt-2 sm:text-3xl">
         Find a professional nearby who can actually help.
       </h1>
       <p className="mt-1.5 hidden max-w-2xl text-ink-soft sm:mt-2 sm:block sm:text-base">
