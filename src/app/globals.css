@@ -1,26 +1,94 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --paper: #f4efe4;
+  --paper-strong: #fffdf7;
+  --ink: #1b2117;
+  --ink-soft: #4a5344;
+  --moss: #246b3d;
+  --moss-deep: #174928;
+  --rust: #c45c26;
+  --sand: #e4d8c4;
+  --line: #d4cbb8;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-paper: var(--paper);
+  --color-paper-strong: var(--paper-strong);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-moss: var(--moss);
+  --color-moss-deep: var(--moss-deep);
+  --color-rust: var(--rust);
+  --color-sand: var(--sand);
+  --color-line: var(--line);
+  --font-sans: var(--font-outfit);
+  --font-serif: var(--font-fraunces);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--line);
+}
+
+html {
+  background: var(--paper);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background:
+    radial-gradient(1200px 500px at 10% -10%, #fff8e8 0%, transparent 50%),
+    radial-gradient(900px 400px at 100% 0%, #e7efe3 0%, transparent 45%),
+    var(--paper);
+  color: var(--ink);
+  font-family: var(--font-outfit), sans-serif;
+}
+
+h1,
+h2,
+h3,
+.serif {
+  font-family: var(--font-fraunces), serif;
+}
+
+:focus-visible {
+  outline: 3px solid var(--moss);
+  outline-offset: 3px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 3rem;
+  padding: 0.75rem 1.15rem;
+  border-radius: 999px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.btn-primary {
+  background: var(--moss);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: var(--moss-deep);
+}
+
+.btn-ink {
+  background: var(--ink);
+  color: #f7f3ea;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--line);
+}
+
+.card {
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: 1.4rem;
+  box-shadow: 0 10px 30px rgba(27, 33, 23, 0.04);
 }

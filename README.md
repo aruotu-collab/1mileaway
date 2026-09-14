@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 1mileaway
 
-## Getting Started
+Find a professional nearby who is genuinely available and ready to help.
 
-First, run the development server:
+This is a country-first marketplace: listings, availability, free-trial qualified leads, one trust lead, then settle-to-continue. There is no prepaid professional wallet.
+
+## Local setup
 
 ```bash
+npm install
+copy .env.example .env
+npx prisma migrate dev --name init
+npm run db:seed
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) then `/gb/plumbers/catford`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Demo accounts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Request a magic link from `/login`. Without Resend, the latest local link is shown on the login page and stored under Admin → Emails.
 
-## Learn More
+- Super admin: `aruotu@gmail.com`
+- Available plumber: `kira@demo.1mileaway.com`
+- Trust-lead ready: `lee@demo.1mileaway.com`
+- Outstanding lead: `pat@demo.1mileaway.com`
 
-To learn more about Next.js, take a look at the following resources:
+Set `DEV_MAGIC_BYPASS=1` to sign in immediately after submitting an email (local only).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Stack
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Next.js App Router, TypeScript, Tailwind, Prisma/SQLite locally (Postgres/Supabase in production), Vitest. Stripe, Resend, Supabase Auth and Twilio are adapters: when keys are missing, mock mode keeps the product testable.
 
-## Deploy on Vercel
+## Core model
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Free trial of qualified leads (default 5, configurable globally / country / profession / professional).
+2. One unpaid trust lead after the trial.
+3. Pay that lead in local currency to continue. Webhook (or mock checkout) is authoritative.
+4. Missed or short calls do not consume the trial.
+5. An outstanding lead pauses Available Now but does not delete the listing.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Useful routes
+
+- `/gb/plumbers/catford` and `/gb/plumbers/lewisham`
+- `/gb/emergency-plumbers/catford`
+- `/call/[id]` — call-tracking simulator
+- `/professional` — I WANT WORK
+- `/admin` — control centre
+- `/api/webhooks/stripe` and `/api/webhooks/resend`
+
+## Tests
+
+```bash
+npm test
+```
+
+## Docs
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Lead lifecycle](docs/LEAD-LIFECYCLE.md)
+- [Availability](docs/AVAILABILITY.md)
+- [SEO](docs/SEO.md)
+- [Payments](docs/PAYMENTS.md)
+- [Email](docs/EMAIL.md)
+- [Admin](docs/ADMIN.md)

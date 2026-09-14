@@ -1,0 +1,495 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Profile {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  name      String?
+  role      String    @default("visitor")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  sessions     Session[]
+  businessUsers BusinessUser[]
+  auditLogs    AuditLog[]
+  adminNotes   AdminNote[]
+}
+
+model MagicLink {
+  id        String    @id @default(uuid())
+  email     String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  profileId String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+}
+
+model Country {
+  id        String   @id @default(uuid())
+  iso2      String   @unique
+  name      String
+  currency  String
+  locale    String   @default("en-GB")
+  timezone  String   @default("Europe/London")
+  active    Boolean  @default(false)
+  tier      Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  locations      Location[]
+  professionSlugs ProfessionSlug[]
+  businesses     Business[]
+  leadPrices     LeadPrice[]
+  trialConfigs   TrialConfig[]
+}
+
+model ProfessionCategory {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  name      String
+  sortOrder Int      @default(0)
+
+  professions Profession[]
+}
+
+model Profession {
+  id                 String   @id @default(uuid())
+  internalId         String   @unique
+  categoryId         String
+  emergencyEligible  Boolean  @default(false)
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  category           ProfessionCategory @relation(fields: [categoryId], references: [id])
+
+  slugs              ProfessionSlug[]
+  synonyms           ProfessionSynonym[]
+  businesses         BusinessProfession[]
+  leadPrices         LeadPrice[]
+  trialConfigs       TrialConfig[]
+  leads              Lead[]
+}
+
+model ProfessionSlug {
+  id             String     @id @default(uuid())
+  professionId   String
+  countryId      String
+  slug           String
+  emergencySlug  String?
+  name           String
+  pluralName     String
+  profession     Profession @relation(fields: [professionId], references: [id], onDelete: Cascade)
+  country        Country    @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+  @@unique([countryId, slug])
+}
+
+model ProfessionSynonym {
+  id           String     @id @default(uuid())
+  professionId String
+  term         String
+  profession   Profession @relation(fields: [professionId], references: [id], onDelete: Cascade)
+
+  @@unique([professionId, term])
+}
+
+model Location {
+  id        String    @id @default(uuid())
+  countryId String
+  parentId  String?
+  type      String
+  slug      String
+  slugPath  String    @unique
+  name      String
+  lat       Float?
+  lng       Float?
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  country   Country   @relation(fields: [countryId], references: [id])
+  parent    Location? @relation("LocationTree", fields: [parentId], references: [id])
+  children  Location[] @relation("LocationTree")
+  aliases   LocationAlias[]
+  businesses BusinessLocation[]
+  seoOverrides SeoPageOverride[]
+  leads     Lead[]
+
+  @@index([countryId, slug])
+}
+
+model LocationAlias {
+  id         String   @id @default(uuid())
+  locationId String
+  alias      String
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([locationId, alias])
+}
+
+model Business {
+  id           String    @id @default(uuid())
+  slug         String    @unique
+  name         String
+  countryId    String
+  claimStatus  String    @default("UNCLAIMED")
+  paymentState String    @default("FREE_TRIAL_ACTIVE")
+  phoneDisplay String?
+  phoneReal    String?
+  contactEmail String?
+  contactEmailSource String?
+  dataProvenance String?
+  outreachStatus String @default("NONE")
+  outreachStep Int @default(0)
+  outreachNextAt DateTime?
+  website      String?
+  about        String?
+  photoUrl     String?
+  ratingAvg    Float     @default(0)
+  ratingCount  Int       @default(0)
+  answerRate   Float     @default(0)
+  sponsoredUntil DateTime?
+  rankingBoost   Float     @default(0)
+  rankingBoostUntil DateTime?
+  rankingBoostReason String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  country      Country   @relation(fields: [countryId], references: [id])
+  professions  BusinessProfession[]
+  locations    BusinessLocation[]
+  users        BusinessUser[]
+  availability BusinessAvailability?
+  availabilityHistory AvailabilityHistory[]
+  verifications BusinessVerification[]
+  trackingNumbers TrackingNumber[]
+  calls        Call[]
+  leads        Lead[]
+  trialBalance TrialBalance?
+  outstanding  OutstandingLeadBalance[]
+  payments     Payment[]
+  reviews      Review[]
+  actionTokens ActionToken[]
+  emails       EmailMessage[]
+  notes        AdminNote[]
+  trialConfigs TrialConfig[]
+}
+
+model BusinessProfession {
+  businessId   String
+  professionId String
+  business     Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  profession   Profession @relation(fields: [professionId], references: [id], onDelete: Cascade)
+
+  @@id([businessId, professionId])
+}
+
+model BusinessLocation {
+  businessId   String
+  locationId   String
+  radiusMiles  Float    @default(3)
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  location     Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@id([businessId, locationId])
+}
+
+model BusinessUser {
+  id         String   @id @default(uuid())
+  businessId String
+  profileId  String
+  role       String   @default("owner")
+  createdAt  DateTime @default(now())
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, profileId])
+}
+
+model BusinessAvailability {
+  businessId  String   @id
+  status      String   @default("UNKNOWN")
+  confirmedAt DateTime?
+  expiresAt   DateTime?
+  source      String?
+  updatedAt   DateTime @updatedAt
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model AvailabilityHistory {
+  id         String   @id @default(uuid())
+  businessId String
+  status     String
+  source     String?
+  createdAt  DateTime @default(now())
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, createdAt])
+}
+
+model BusinessVerification {
+  id         String   @id @default(uuid())
+  businessId String
+  kind       String
+  status     String   @default("pending")
+  notes      String?
+  createdAt  DateTime @default(now())
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model TrackingNumber {
+  id         String   @id @default(uuid())
+  businessId String
+  number     String
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  calls      Call[]
+}
+
+model Call {
+  id             String   @id @default(uuid())
+  businessId     String
+  trackingNumberId String?
+  fromNumber     String?
+  toNumber       String?
+  durationSeconds Int     @default(0)
+  status         String   @default("initiated")
+  startedAt      DateTime @default(now())
+  endedAt        DateTime?
+  business       Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  trackingNumber TrackingNumber? @relation(fields: [trackingNumberId], references: [id])
+  events         CallEvent[]
+  lead           Lead?
+
+  @@index([businessId, startedAt])
+}
+
+model CallEvent {
+  id        String   @id @default(uuid())
+  callId    String
+  type      String
+  payload   String?
+  createdAt DateTime @default(now())
+  call      Call     @relation(fields: [callId], references: [id], onDelete: Cascade)
+}
+
+model Lead {
+  id             String   @id @default(uuid())
+  businessId     String
+  countryId      String
+  professionId   String
+  locationId     String?
+  callId         String?  @unique
+  visitorPhone   String?
+  visitorName    String?
+  status         String   @default("CREATED")
+  qualification  String?
+  chargingMode   String?
+  priceMinor     Int?
+  currency       String?
+  createdAt      DateTime @default(now())
+  qualifiedAt    DateTime?
+  business       Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  profession     Profession @relation(fields: [professionId], references: [id])
+  location       Location? @relation(fields: [locationId], references: [id])
+  call           Call?    @relation(fields: [callId], references: [id])
+  outstanding    OutstandingLeadBalance?
+  payments       Payment[]
+
+  @@index([businessId, createdAt])
+}
+
+model LeadPrice {
+  id           String    @id @default(uuid())
+  countryId    String
+  professionId String?
+  leadType     String    @default("standard")
+  amountMinor  Int
+  currency     String
+  active       Boolean   @default(true)
+  effectiveFrom DateTime @default(now())
+  effectiveTo   DateTime?
+  country      Country   @relation(fields: [countryId], references: [id])
+  profession   Profession? @relation(fields: [professionId], references: [id])
+}
+
+model TrialConfig {
+  id           String     @id @default(uuid())
+  scope        String
+  countryId    String?
+  professionId String?
+  businessId   String?
+  freeLeads    Int
+  createdAt    DateTime   @default(now())
+  country      Country?   @relation(fields: [countryId], references: [id])
+  profession   Profession? @relation(fields: [professionId], references: [id])
+  business     Business?  @relation(fields: [businessId], references: [id])
+}
+
+model TrialBalance {
+  id         String   @id @default(uuid())
+  businessId String   @unique
+  remaining  Int
+  used       Int      @default(0)
+  updatedAt  DateTime @updatedAt
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model OutstandingLeadBalance {
+  id          String   @id @default(uuid())
+  businessId  String
+  leadId      String   @unique
+  amountMinor Int
+  currency    String
+  status      String   @default("OPEN")
+  createdAt   DateTime @default(now())
+  settledAt   DateTime?
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, status])
+}
+
+model Payment {
+  id          String   @id @default(uuid())
+  businessId  String
+  leadId      String
+  provider    String
+  providerRef String?  @unique
+  amountMinor Int
+  currency    String
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  settledAt   DateTime?
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  events      PaymentEvent[]
+}
+
+model PaymentEvent {
+  id        String   @id @default(uuid())
+  paymentId String
+  type      String
+  payload   String?
+  createdAt DateTime @default(now())
+  payment   Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  businessId String
+  rating     Int
+  body       String?
+  source     String   @default("interaction")
+  published  Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model EmailMessage {
+  id         String   @id @default(uuid())
+  businessId String?
+  toEmail    String
+  template   String
+  subject    String
+  status     String   @default("queued")
+  payload    String?
+  createdAt  DateTime @default(now())
+  business   Business? @relation(fields: [businessId], references: [id])
+  events     EmailEvent[]
+}
+
+model EmailEvent {
+  id        String   @id @default(uuid())
+  emailId   String
+  type      String
+  payload   String?
+  createdAt DateTime @default(now())
+  email     EmailMessage @relation(fields: [emailId], references: [id], onDelete: Cascade)
+}
+
+model ActionToken {
+  id         String    @id @default(uuid())
+  purpose    String
+  businessId String
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model SeoPageOverride {
+  id          String    @id @default(uuid())
+  locationId  String?
+  path        String    @unique
+  title       String?
+  description String?
+  noindex     Boolean?
+  location    Location? @relation(fields: [locationId], references: [id])
+}
+
+model AdminNote {
+  id         String   @id @default(uuid())
+  businessId String?
+  authorId   String
+  body       String
+  createdAt  DateTime @default(now())
+  business   Business? @relation(fields: [businessId], references: [id])
+  author     Profile  @relation(fields: [authorId], references: [id])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   String?
+  createdAt  DateTime @default(now())
+  actor      Profile? @relation(fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  name      String
+  path      String?
+  payload   String?
+  createdAt DateTime @default(now())
+
+  @@index([name, createdAt])
+}
+
+model EmailSuppression {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  reason     String
+  businessId String?
+  createdAt  DateTime @default(now())
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
