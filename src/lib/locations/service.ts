@@ -3,6 +3,7 @@ import { haversineMiles } from "@/lib/utils";
 import { listingPoint, milesBetween } from "@/lib/locations/distance";
 import { isAvailabilityLive } from "@/lib/availability/engine";
 import { rankListings, type Rankable } from "@/lib/ranking/engine";
+import { publicListingWhere } from "@/lib/listings/visibility";
 
 export async function getActiveCountry(iso2: string) {
   return prisma.country.findUnique({ where: { iso2: iso2.toLowerCase() } });
@@ -88,8 +89,7 @@ export async function listingsFor(input: {
   const rows = await prisma.business.findMany({
     where: {
       countryId: input.countryId,
-      deletedAt: null,
-      claimStatus: { not: "SUSPENDED" },
+      ...publicListingWhere,
       professions: { some: { professionId: input.professionId } },
       locations: { some: { locationId: { in: locationIds } } },
     },

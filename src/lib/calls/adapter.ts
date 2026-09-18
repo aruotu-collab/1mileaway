@@ -130,7 +130,8 @@ export async function requestTradesman(input: {
       professionId: profession,
       source: "lead",
     });
-    return { ok: true as const };
+    const askByMessage = !business.contactEmail?.trim() && Boolean(business.phoneReal?.trim() || business.phoneDisplay?.trim());
+    return { ok: true as const, askByMessage };
   }
 
   const area = await areaName(input.locationId);

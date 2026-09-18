@@ -285,6 +285,12 @@ async function loadSiteActivitySnapshot(): Promise<SiteActivitySnapshot> {
       WHERE "deletedAt" IS NULL
         AND "claimStatus" <> ${CLAIM_STATUS.SUSPENDED}
         AND (${countryFilter}::text IS NULL OR "countryId" = ${countryFilter})
+        AND (
+          "claimStatus" <> ${CLAIM_STATUS.UNCLAIMED}
+          OR NULLIF(BTRIM(COALESCE("contactEmail", '')), '') IS NOT NULL
+          OR NULLIF(BTRIM(COALESCE("phoneReal", '')), '') IS NOT NULL
+          OR NULLIF(BTRIM(COALESCE("phoneDisplay", '')), '') IS NOT NULL
+        )
     `,
     prisma.$queryRaw<Array<{ professionId: string; unclaimed: number; claimed: number }>>`
       SELECT
@@ -296,6 +302,12 @@ async function loadSiteActivitySnapshot(): Promise<SiteActivitySnapshot> {
       WHERE b."deletedAt" IS NULL
         AND b."claimStatus" <> ${CLAIM_STATUS.SUSPENDED}
         AND (${countryFilter}::text IS NULL OR b."countryId" = ${countryFilter})
+        AND (
+          b."claimStatus" <> ${CLAIM_STATUS.UNCLAIMED}
+          OR NULLIF(BTRIM(COALESCE(b."contactEmail", '')), '') IS NOT NULL
+          OR NULLIF(BTRIM(COALESCE(b."phoneReal", '')), '') IS NOT NULL
+          OR NULLIF(BTRIM(COALESCE(b."phoneDisplay", '')), '') IS NOT NULL
+        )
       GROUP BY bp."professionId"
     `,
     prisma.professionSlug.findMany({

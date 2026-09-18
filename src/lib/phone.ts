@@ -104,11 +104,35 @@ export function toTelHref(phone: string) {
   return compact ? `tel:${compact}` : null;
 }
 
+export function phoneDigits(phone: string) {
+  return phone.replace(/[^\d]/g, "");
+}
+
+export function toSmsHref(phone: string, body: string) {
+  const compact = phone.replace(/[^\d+]/g, "");
+  if (!compact) return null;
+  return `sms:${compact}?body=${encodeURIComponent(body)}`;
+}
+
+export function toWhatsAppHref(phone: string, body: string) {
+  const digits = phoneDigits(phone);
+  if (digits.length < 8) return null;
+  return `https://wa.me/${digits}?text=${encodeURIComponent(body)}`;
+}
+
+export function customerAskMessage(input: { area: string; claimUrl: string }) {
+  return `Hi, I found you on 1mileaway. There's a job in ${input.area}. Claim your listing so I can use Call now: ${input.claimUrl}`;
+}
+
 export function canRequestTradesman(input: {
   claimStatus: string;
   contactEmail?: string | null;
+  phoneReal?: string | null;
+  phoneDisplay?: string | null;
 }) {
-  if (input.claimStatus === CLAIM_STATUS.UNCLAIMED) return Boolean(input.contactEmail);
+  if (input.claimStatus === CLAIM_STATUS.UNCLAIMED) {
+    return Boolean(input.contactEmail?.trim() || input.phoneReal?.trim() || input.phoneDisplay?.trim());
+  }
   return input.claimStatus === CLAIM_STATUS.CLAIMED || input.claimStatus === CLAIM_STATUS.VERIFIED;
 }
 
@@ -116,14 +140,21 @@ export function listingCallOptions(input: {
   claimStatus: string;
   paymentState?: string;
   phoneReal?: string | null;
+  phoneDisplay?: string | null;
   contactEmail?: string | null;
   currentPeriodEnd?: Date | null;
   subscription?: { currentPeriodEnd?: Date | null } | null;
 }) {
   const currentPeriodEnd = input.currentPeriodEnd ?? input.subscription?.currentPeriodEnd ?? null;
   const phone = publicCallPhone({ ...input, currentPeriodEnd });
+  const askByMessage =
+    !phone &&
+    input.claimStatus === CLAIM_STATUS.UNCLAIMED &&
+    !input.contactEmail?.trim() &&
+    Boolean(input.phoneReal?.trim() || input.phoneDisplay?.trim());
   return {
     phone,
     canRequest: !phone && canRequestTradesman(input),
+    askByMessage,
   };
 }

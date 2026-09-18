@@ -8,6 +8,69 @@ import { startListingTrial } from "@/lib/subscription";
 import { replaceBusinessProfessions } from "@/lib/listings/professions";
 import { uniqueProfessionIds } from "@/lib/professions";
 
+async function createClaimInviteTokens(businessId: string) {
+  const claimToken = randomToken();
+  const availabilityToken = randomToken();
+  const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+  await prisma.actionToken.createMany({
+    data: [
+      {
+        purpose: "claim",
+        businessId,
+        tokenHash: hashToken(claimToken),
+        expiresAt,
+      },
+      {
+        purpose: "availability",
+        businessId,
+        tokenHash: hashToken(availabilityToken),
+        expiresAt,
+      },
+    ],
+  });
+  return { claimToken, availabilityToken, claimUrl: `${APP_URL}/claim/${claimToken}` };
+}
+
+function tokenFromMetadata(metadata: string | null) {
+  if (!metadata) return null;
+  try {
+    const parsed = JSON.parse(metadata) as { claimToken?: string };
+    return parsed.claimToken ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function claimUrlForListing(businessId: string) {
+  const logs = await prisma.auditLog.findMany({
+    where: { entityId: businessId, action: { in: ["claim.link_issued", "claim.invited"] } },
+    orderBy: { createdAt: "desc" },
+    take: 8,
+  });
+  for (const log of logs) {
+    const token = tokenFromMetadata(log.metadata);
+    if (!token) continue;
+    const row = await prisma.actionToken.findFirst({
+      where: {
+        businessId,
+        purpose: "claim",
+        usedAt: null,
+        expiresAt: { gt: new Date() },
+        tokenHash: hashToken(token),
+      },
+    });
+    if (row) return `${APP_URL}/claim/${token}`;
+  }
+  const issued = await createClaimInviteTokens(businessId);
+  await writeAudit({
+    action: "claim.link_issued",
+    entityType: "business",
+    entityId: businessId,
+    metadata: { claimToken: issued.claimToken, channel: "phone" },
+  });
+  return issued.claimUrl;
+}
+
 export async function inviteUnclaimedBusiness(input: {
   businessId: string;
   locationId?: string | null;
@@ -23,13 +86,15 @@ export async function inviteUnclaimedBusiness(input: {
       professions: { include: { profession: { include: { slugs: true } } } },
     },
   });
-  if (!business || !business.contactEmail) return null;
+  if (!business) return null;
   if (business.claimStatus !== CLAIM_STATUS.UNCLAIMED) return null;
   if (business.users.length > 0) return null;
-  const contactEmail = business.contactEmail;
-  const suppressed = await isEmailSuppressed(contactEmail);
-  if (suppressed === "bounce" || suppressed === "dnc") return null;
-  if (suppressed && input.source !== "lead") return null;
+  const contactEmail = business.contactEmail?.trim() || null;
+  if (contactEmail) {
+    const suppressed = await isEmailSuppressed(contactEmail);
+    if (suppressed === "bounce" || suppressed === "dnc") return null;
+    if (suppressed && input.source !== "lead") return null;
+  }
 
   if (!input.force) {
     const recent = await prisma.actionToken.findFirst({
@@ -43,27 +108,7 @@ export async function inviteUnclaimedBusiness(input: {
     if (recent) return { claimToken: null, alreadyInvited: true as const };
   }
 
-  const claimToken = randomToken();
-  const availabilityToken = randomToken();
-  const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-
-  await prisma.actionToken.createMany({
-    data: [
-      {
-        purpose: "claim",
-        businessId: business.id,
-        tokenHash: hashToken(claimToken),
-        expiresAt,
-      },
-      {
-        purpose: "availability",
-        businessId: business.id,
-        tokenHash: hashToken(availabilityToken),
-        expiresAt,
-      },
-    ],
-  });
-
+  const issued = await createClaimInviteTokens(business.id);
   const area =
     business.locations.find((row) => row.locationId === input.locationId)?.location.name ??
     business.locations[0]?.location.name ??
@@ -73,8 +118,18 @@ export async function inviteUnclaimedBusiness(input: {
     business.professions[0]?.profession.internalId ??
     "professional";
 
-  const claimUrl = `${APP_URL}/claim/${claimToken}`;
-  const availableUrl = `${APP_URL}/action/availability?token=${availabilityToken}&status=AVAILABLE_NOW`;
+  if (!contactEmail) {
+    await writeAudit({
+      action: "claim.link_issued",
+      entityType: "business",
+      entityId: business.id,
+      metadata: { claimToken: issued.claimToken, channel: "phone", area, profession },
+    });
+    return { claimToken: issued.claimToken, alreadyInvited: false as const, emailed: false as const };
+  }
+
+  const claimUrl = issued.claimUrl;
+  const availableUrl = `${APP_URL}/action/availability?token=${issued.availabilityToken}&status=AVAILABLE_NOW`;
   const fromLead = input.source === "lead";
   const unsub = unsubscribeUrl(business.id, contactEmail);
 
@@ -100,20 +155,20 @@ export async function inviteUnclaimedBusiness(input: {
           availableUrl,
           unsubscribeUrl: unsub,
         }),
-    payload: { token: process.env.RESEND_API_KEY ? undefined : claimToken },
+    payload: { token: process.env.RESEND_API_KEY ? undefined : issued.claimToken },
   });
 
   await writeAudit({
     action: "claim.invited",
     entityType: "business",
     entityId: business.id,
-    metadata: { area, profession },
+    metadata: { area, profession, claimToken: issued.claimToken },
   });
   if (input.source !== "lead") {
     await markOutreachAfterInvite(business.id);
   }
 
-  return { claimToken, alreadyInvited: false as const };
+  return { claimToken: issued.claimToken, alreadyInvited: false as const, emailed: true as const };
 }
 
 export async function completeClaim(input: {

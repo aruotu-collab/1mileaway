@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 import { LAUNCH_COUNTRIES } from "@/lib/countries/catalog";
 import {
   canRequestTradesman,
+  customerAskMessage,
   nationalNumberForInput,
   normalizeListingPhone,
   phonePlaceholder,
   publicCallPhone,
   toE164,
+  toSmsHref,
   toTelHref,
+  toWhatsAppHref,
 } from "@/lib/phone";
 
 describe("publicCallPhone", () => {
@@ -41,9 +44,10 @@ describe("publicCallPhone", () => {
 });
 
 describe("canRequestTradesman", () => {
-  it("lets customers ask unclaimed listings that have an email", () => {
+  it("lets customers ask unclaimed listings we can later reach", () => {
     expect(canRequestTradesman({ claimStatus: "UNCLAIMED", contactEmail: "dan@demo.1mileaway.com" })).toBe(true);
-    expect(canRequestTradesman({ claimStatus: "UNCLAIMED", contactEmail: null })).toBe(false);
+    expect(canRequestTradesman({ claimStatus: "UNCLAIMED", phoneReal: "+442079460101" })).toBe(true);
+    expect(canRequestTradesman({ claimStatus: "UNCLAIMED", contactEmail: null, phoneReal: null })).toBe(false);
     expect(canRequestTradesman({ claimStatus: "CLAIMED" })).toBe(true);
   });
 });
@@ -52,6 +56,15 @@ describe("toTelHref", () => {
   it("builds a tel link from a display number", () => {
     expect(toTelHref("020 7946 0101")).toBe("tel:02079460101");
     expect(toTelHref("+44 2079460101")).toBe("tel:+442079460101");
+  });
+});
+
+describe("customer message links", () => {
+  it("opens SMS and WhatsApp with the claim line", () => {
+    const body = customerAskMessage({ area: "Catford", claimUrl: "https://1mileaway.com/claim/abc" });
+    expect(body).toContain("Catford");
+    expect(toSmsHref("+447911123456", body)).toContain("sms:+447911123456?body=");
+    expect(toWhatsAppHref("+447911123456", body)).toContain("https://wa.me/447911123456?text=");
   });
 });
 

@@ -15,6 +15,7 @@ const filters = [
   { id: "trial", label: "On trial" },
   { id: "live", label: "Call now on" },
   { id: "asked", label: "Asked" },
+  { id: "phone-only", label: "Phone only" },
 ] as const;
 
 export default async function AdminProfessionalsPage({
@@ -91,6 +92,13 @@ export default async function AdminProfessionalsPage({
       if (view === "trial") return biz.trial;
       if (view === "live") return biz.callNowOn;
       if (view === "asked") return biz.asks > 0;
+      if (view === "phone-only") {
+        return (
+          biz.claimStatus === CLAIM_STATUS.UNCLAIMED &&
+          !biz.contactEmail?.trim() &&
+          Boolean(biz.phoneReal?.trim() || biz.phoneDisplay?.trim())
+        );
+      }
       return true;
     });
 
@@ -156,6 +164,9 @@ export default async function AdminProfessionalsPage({
               <p className="mt-1 text-sm text-ink-soft">
                 {biz.trades.join(", ") || "No trades"} · {biz.areas.join(", ") || "No areas"} · availability{" "}
                 {biz.availability.replaceAll("_", " ").toLowerCase()}
+              </p>
+              <p className="mt-1 text-sm text-ink-soft">
+                {biz.contactEmail?.trim() || "no email"} · {biz.phoneDisplay?.trim() || biz.phoneReal?.trim() || "no phone"}
               </p>
               <p className="mt-1 text-sm text-ink-soft">
                 {biz._count.calls} Call now {biz._count.calls === 1 ? "tap" : "taps"} · {biz.asks}{" "}

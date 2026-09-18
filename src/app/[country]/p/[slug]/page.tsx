@@ -8,6 +8,7 @@ import { isAvailabilityLive } from "@/lib/availability/engine";
 import { CLAIM_STATUS } from "@/lib/constants";
 import { listingPoint, milesBetween } from "@/lib/locations/distance";
 import { listingCallOptions } from "@/lib/phone";
+import { isPublicListing } from "@/lib/listings/visibility";
 import { marketplaceStats } from "@/lib/subscription";
 import { safeInternalPath } from "@/lib/navigation";
 
@@ -48,7 +49,7 @@ export default async function ProfilePage({
       reviews: { where: { published: true }, orderBy: { createdAt: "desc" }, take: 10 },
     },
   });
-  if (!business || business.deletedAt) notFound();
+  if (!business || !isPublicListing(business)) notFound();
   const status = isAvailabilityLive(
     business.availability?.status ?? "UNKNOWN",
     business.availability?.expiresAt,

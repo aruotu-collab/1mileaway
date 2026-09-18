@@ -156,8 +156,8 @@ export default async function LocationProfessionPage({
       </p>
       {query.asked === "1" ? (
         <p className="card mt-4 p-4">
-          We have asked that professional to join. If they are already on 1mileaway, we asked them to turn Call now back
-          on. You can still ring anyone below who is live.
+          We have noted that. If we have their email we have written to them. If we only have a phone, 1mileaway will
+          ring them and ask them to take the job. You can still call anyone below who is live.
         </p>
       ) : null}
       {query.callError ? (

@@ -40,8 +40,11 @@ export async function askTradesman(formData: FormData): Promise<{ href: string }
   const locationId = String(formData.get("locationId") ?? "") || undefined;
   const returnTo = String(formData.get("returnTo") ?? "");
   if (!businessId) return { href: "/" };
-  await requestTradesman({ businessId, professionId, locationId });
+  const result = await requestTradesman({ businessId, professionId, locationId });
   const fallback = safeInternalPath(returnTo, "/");
+  if (result.ok && result.askByMessage) {
+    return { href: withQuery("/asked", { business: businessId, from: fallback }) };
+  }
   return { href: withQuery(fallback, { asked: "1" }) };
 }
 

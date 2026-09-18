@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/db";
 import { isIndexable } from "@/lib/seo/indexability";
+import { publicListingWhere } from "@/lib/listings/visibility";
 import { APP_URL } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     prisma.country.findMany({ where: { active: true }, select: { id: true, iso2: true } }),
     prisma.seoPageOverride.findMany({ select: { path: true, noindex: true } }),
     prisma.business.findMany({
-      where: { deletedAt: null, claimStatus: { not: "SUSPENDED" } },
+      where: publicListingWhere,
       select: {
         id: true,
         countryId: true,

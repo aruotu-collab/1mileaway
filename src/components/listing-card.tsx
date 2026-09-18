@@ -31,6 +31,7 @@ type ListingCardProps = {
   fromVisitor?: boolean;
   phone?: string | null;
   canRequest?: boolean;
+  askByMessage?: boolean;
   skip?: string;
 };
 
@@ -110,14 +111,14 @@ export function ListingCard(props: ListingCardProps) {
                 Call now
               </button>
             </PushForm>
-          ) : (
+          ) : props.canRequest === false ? null : (
             <PushForm action={askTradesman} className="flex-1">
               <input type="hidden" name="businessId" value={props.businessId} />
               <input type="hidden" name="professionId" value={props.professionId ?? ""} />
               <input type="hidden" name="locationId" value={props.locationId ?? ""} />
               <input type="hidden" name="returnTo" value={props.resultsHref ?? `/${props.country}/p/${props.slug}`} />
               <button className="btn btn-primary w-full" type="submit">
-                Ask them to take this job
+                {props.askByMessage ? "Message them" : "Ask them to take this job"}
               </button>
             </PushForm>
           )}
@@ -129,6 +130,10 @@ export function ListingCard(props: ListingCardProps) {
         </div>
         {props.phone ? (
           <p className="mt-1.5 text-center text-xs text-ink-soft">Uses your phone. You place this call yourself.</p>
+        ) : props.askByMessage ? (
+          <p className="mt-2 rounded-2xl border border-line bg-paper px-4 py-3 text-sm text-ink-soft">
+            Not taking Call now yet. You can message them from your own phone.
+          </p>
         ) : (
           <p className="mt-2 rounded-2xl border border-line bg-paper px-4 py-3 text-sm text-ink-soft">
             This listing is not taking calls through 1mileaway yet.

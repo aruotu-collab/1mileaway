@@ -62,7 +62,14 @@ export default async function AdminCallsPage() {
       <div className="mt-10 grid gap-8 lg:grid-cols-2">
         <section id="unclaimed">
           <h2 className="serif text-2xl">Unclaimed listings people clicked</h2>
-          <p className="mt-2 text-sm text-ink-soft">Still unclaimed, and a customer asked them to take the job.</p>
+          <p className="mt-2 text-sm text-ink-soft">
+            Still unclaimed, and a customer asked them to take the job. Phone-only listings get a text from the
+            customer. The backup queue is on{" "}
+            <Link href="/admin/leads" className="text-moss-deep hover:underline">
+              Asked
+            </Link>
+            .
+          </p>
           {data.unclaimedListings.length === 0 ? (
             <p className="card mt-4 p-5 text-ink-soft">Nobody has asked an unclaimed listing yet.</p>
           ) : (

@@ -178,6 +178,10 @@ export async function importListingRows(
     seen.add(key);
     const email = row.email.includes("@") ? row.email : null;
     const phone = row.phone ? normalizeListingPhone(row.phone, countryIso) : null;
+    if (!email && !phone && !row.phone.trim()) {
+      skipped += 1;
+      continue;
+    }
     const provenance = `csv:${row.source || options.source}`;
     const id = randomUUID();
     businesses.push({
