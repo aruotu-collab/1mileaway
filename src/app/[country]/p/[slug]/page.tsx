@@ -6,6 +6,7 @@ import { ClaimListingCta } from "@/components/claim-listing-cta";
 import { BackLink } from "@/components/back-link";
 import { isAvailabilityLive } from "@/lib/availability/engine";
 import { CLAIM_STATUS } from "@/lib/constants";
+import { listingPoint, milesBetween } from "@/lib/locations/distance";
 import { listingCallOptions } from "@/lib/phone";
 import { marketplaceStats } from "@/lib/subscription";
 import { safeInternalPath } from "@/lib/navigation";
@@ -57,8 +58,20 @@ export default async function ProfilePage({
     profession?.profession.slugs.find((row) => row.countryId === business.countryId)?.slug ?? "plumbers";
   const locationSlug = business.locations[0]?.location.slug ?? "catford";
   const resultsHref = safeInternalPath(query.from, fallbackResultsPath(country, professionSlug, locationSlug));
-  const fromSlug = resultsHref.split("?")[0].split("/").filter(Boolean).at(-1) ?? locationSlug;
+  const resultsUrl = new URL(resultsHref, "http://local.1mileaway");
+  const fromSlug = resultsUrl.pathname.split("/").filter(Boolean).at(-1) ?? locationSlug;
   const resultsLabel = fromSlug.replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+  const fromLat = Number(resultsUrl.searchParams.get("lat"));
+  const fromLng = Number(resultsUrl.searchParams.get("lng"));
+  const fromLocation = await prisma.location.findFirst({
+    where: { country: { iso2: country }, slug: fromSlug, active: true },
+    select: { lat: true, lng: true },
+  });
+  const origin =
+    Number.isFinite(fromLat) && Number.isFinite(fromLng) && resultsUrl.searchParams.get("lat")
+      ? { lat: fromLat, lng: fromLng }
+      : fromLocation;
+  const distanceMiles = milesBetween(origin, listingPoint(business));
   const unclaimed = business.claimStatus === CLAIM_STATUS.UNCLAIMED;
   const stats = unclaimed ? await marketplaceStats(business.id) : null;
   const trades = business.professions.map(
@@ -73,26 +86,36 @@ export default async function ProfilePage({
           ← Back to {resultsLabel} results
         </BackLink>
       </p>
-      <ListingCard
-        featured
-        country={country}
-        slug={business.slug}
-        name={business.name}
-        about={business.about}
-        distanceMiles={0.6}
-        availabilityStatus={status}
-        availabilityConfirmedAt={business.availability?.confirmedAt}
-        answerRate={business.answerRate}
-        answerReports={business.answerReports}
-        ratingAvg={business.ratingAvg}
-        ratingCount={business.ratingCount}
-        claimStatus={business.claimStatus}
-        businessId={business.id}
-        professionId={profession?.professionId}
-        locationId={business.locations[0]?.locationId}
-        showProfileLink={false}
-        {...listingCallOptions(business)}
-      />
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-moss-deep">Profile</p>
+      <h1 className="serif mt-1.5 text-3xl font-medium leading-snug sm:text-4xl">{business.name}</h1>
+      {trades.length > 0 || areas.length > 0 ? (
+        <p className="mt-2 text-sm text-ink-soft sm:text-base">
+          {[trades.join(" · "), areas.join(", ")].filter(Boolean).join(" · ")}
+        </p>
+      ) : null}
+
+      <div className="mt-6">
+        <ListingCard
+          featured
+          country={country}
+          slug={business.slug}
+          name={business.name}
+          about={business.about}
+          distanceMiles={distanceMiles}
+          availabilityStatus={status}
+          availabilityConfirmedAt={business.availability?.confirmedAt}
+          answerRate={business.answerRate}
+          answerReports={business.answerReports}
+          ratingAvg={business.ratingAvg}
+          ratingCount={business.ratingCount}
+          claimStatus={business.claimStatus}
+          businessId={business.id}
+          professionId={profession?.professionId}
+          locationId={business.locations[0]?.locationId}
+          showProfileLink={false}
+          {...listingCallOptions(business)}
+        />
+      </div>
       {unclaimed && stats ? (
         <ClaimListingCta
           businessId={business.id}

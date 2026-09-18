@@ -152,7 +152,7 @@ export default async function LocationProfessionPage({
       <p className="mt-3 text-base text-ink-soft sm:text-lg">
         {listings.length === 0
           ? `Nobody is listed for ${locationRow.name} yet. Try a nearby area or another trade.`
-          : `${listings.length} serve ${locationRow.name}${availableNow ? ` · ${availableNow} recently available` : ""}${query.near ? ` · distances from ${query.near}` : ""}`}
+          : `${listings.length} serve ${locationRow.name}${availableNow ? ` · ${availableNow} recently available` : ""}${query.near ? ` · distances from ${query.near}` : ""}. Call now uses your phone — you place the call yourself.`}
       </p>
       {query.asked === "1" ? (
         <p className="card mt-4 p-4">

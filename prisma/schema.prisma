@@ -21,6 +21,7 @@ model Profile {
   businessUsers BusinessUser[]
   auditLogs    AuditLog[]
   adminNotes   AdminNote[]
+  contactThreads ContactThread[]
 }
 
 model MagicLink {
@@ -160,6 +161,8 @@ model Business {
   outreachNextAt DateTime?
   website      String?
   about        String?
+  lat          Float?
+  lng          Float?
   photoUrl     String?
   ratingAvg    Float     @default(0)
   ratingCount  Int       @default(0)
@@ -513,4 +516,32 @@ model Setting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+model ContactThread {
+  id        String   @id @default(uuid())
+  email     String
+  name      String
+  subject   String
+  status    String   @default("open")
+  profileId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  profile   Profile? @relation(fields: [profileId], references: [id], onDelete: SetNull)
+  messages  ContactMessage[]
+
+  @@index([email])
+  @@index([status, updatedAt])
+}
+
+model ContactMessage {
+  id         String   @id @default(uuid())
+  threadId   String
+  authorKind String
+  authorId   String?
+  body       String
+  createdAt  DateTime @default(now())
+  thread     ContactThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
 }

@@ -18,7 +18,9 @@ export type EmailTemplate =
   | "subscribe_from_demand"
   | "claim_invite"
   | "outreach_day3"
-  | "outreach_day8";
+  | "outreach_day8"
+  | "contact_received"
+  | "contact_reply";
 
 type SendInput = {
   to: string;

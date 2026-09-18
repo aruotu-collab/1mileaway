@@ -26,9 +26,14 @@ export default async function AdminOverviewPage() {
         <AdminStat
           label="Unclaimed asks today"
           value={snap.unclaimedAsksToday}
-          hint="Customers who could not get through"
+          hint="Customers who asked them to take a job"
         />
         <AdminStat label="Listings with Call now on" value={snap.callNowOnCount} />
+        <AdminStat
+          label="Claimed today"
+          value={data.claimsToday}
+          hint="Unclaimed → claimed"
+        />
         <AdminStat
           label="Claimed · not yet claimed"
           value={`${snap.claimedCount} · ${snap.unclaimedCount}`}
@@ -44,13 +49,18 @@ export default async function AdminOverviewPage() {
         <AdminStat label="No-answer reports today" value={data.noAnswerToday} />
         <AdminStat label="Reviews from real calls" value={snap.reviewCount} />
         <AdminStat label="Emails sent today" value={data.emailsToday} />
+        <AdminStat
+          label="Open contact messages"
+          value={data.openContacts}
+          hint="Reply from Contact"
+        />
       </div>
 
       <div className="mt-10 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
         <section>
           <h2 className="serif text-2xl">What just happened</h2>
           {data.feed.length === 0 ? (
-            <p className="card mt-4 p-5 text-ink-soft">No calls, asks, reviews, payments or emails yet.</p>
+            <p className="card mt-4 p-5 text-ink-soft">No calls, asks, reviews, payments, emails or contact messages yet.</p>
           ) : (
             <ul className="mt-4 grid gap-2">
               {data.feed.map((item, index) => (
@@ -69,7 +79,7 @@ export default async function AdminOverviewPage() {
         <section>
           <h2 className="serif text-2xl">Claimed vs unclaimed by trade</h2>
           <p className="mt-2 text-sm text-ink-soft">
-            Same split customers see on the live tape. Unclaimed trades cannot take Call now.
+            Same split customers see on the live tape. Unclaimed listings can still be asked to take a job.
           </p>
           {snap.trades.length === 0 ? (
             <p className="card mt-4 p-5 text-ink-soft">No listings yet.</p>
@@ -86,6 +96,18 @@ export default async function AdminOverviewPage() {
             </ul>
           )}
           <p className="mt-4 text-sm">
+            <Link href="/admin/calls#unclaimed" className="text-moss-deep hover:underline">
+              Unclaimed listings people clicked →
+            </Link>
+            <span className="text-ink-soft"> · </span>
+            <Link href="/admin/calls#call-now" className="text-moss-deep hover:underline">
+              Call now listings people clicked →
+            </Link>
+            <span className="text-ink-soft"> · </span>
+            <Link href="/admin/claims" className="text-moss-deep hover:underline">
+              See daily claim conversions →
+            </Link>
+            <span className="text-ink-soft"> · </span>
             <Link href="/admin/professionals" className="text-moss-deep hover:underline">
               Open professionals →
             </Link>

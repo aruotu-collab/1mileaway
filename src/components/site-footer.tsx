@@ -14,6 +14,7 @@ export async function SiteFooter() {
         <div className="flex flex-col gap-2">
           <Link href="/">{copy.findHelp}</Link>
           <Link href="/for-professionals">{copy.forProfessionals}</Link>
+          <Link href="/contact">{copy.contactUs}</Link>
         </div>
         <div className="flex flex-col gap-2">
           <Link href="/privacy">Privacy</Link>

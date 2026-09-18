@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { haversineMiles } from "@/lib/utils";
+import { listingPoint, milesBetween } from "@/lib/locations/distance";
 import { isAvailabilityLive } from "@/lib/availability/engine";
 import { rankListings, type Rankable } from "@/lib/ranking/engine";
 
@@ -101,19 +102,13 @@ export async function listingsFor(input: {
     },
   });
 
-  const preciseOrigin = Boolean(input.origin);
   const mapped = rows.map((biz) => {
-    const served = biz.locations.find((l) => l.locationId === input.location.id)?.location;
-    const home = biz.locations[0]?.location;
-    const point = home?.lat != null && home.lng != null ? { lat: home.lat, lng: home.lng } : served;
-    let distanceMiles = 0.8;
-    if (origin && point?.lat != null && point.lng != null) {
-      distanceMiles = haversineMiles(origin, { lat: point.lat, lng: point.lng });
-    }
-    if (!preciseOrigin && distanceMiles < 0.15) {
-      const jitter = (biz.slug.length % 9) / 10 + 0.2;
-      distanceMiles = jitter;
-    }
+    const point = listingPoint({
+      lat: biz.lat,
+      lng: biz.lng,
+      locations: biz.locations,
+    });
+    const distanceMiles = milesBetween(origin, point);
     const status = isAvailabilityLive(biz.availability?.status ?? "UNKNOWN", biz.availability?.expiresAt);
     const rankable: Rankable & typeof biz = {
       ...biz,
@@ -142,7 +137,7 @@ export async function listingsFor(input: {
 
   const ranked = rankListings(filtered);
   if (input.filters?.sort === "nearest") {
-    return [...ranked].sort((a, b) => a.distanceMiles - b.distanceMiles);
+    return [...ranked].sort((a, b) => (a.distanceMiles ?? 99) - (b.distanceMiles ?? 99));
   }
   if (input.filters?.sort === "available") {
     return [...ranked].sort((a, b) => b.explanation.availability - a.explanation.availability);

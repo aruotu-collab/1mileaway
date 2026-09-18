@@ -38,7 +38,34 @@ export const LAUNCH_COUNTRIES: LaunchCountry[] = [
   { iso2: "br", name: "Brazil", nativeName: "Brasil", locale: "pt-BR", language: "pt", htmlLang: "pt-BR", timezone: "America/Sao_Paulo", localCurrency: "BRL", launchOrder: 20, dir: "ltr" },
 ];
 
+const CALLING_CODES: Record<string, string> = {
+  gb: "+44",
+  us: "+1",
+  ca: "+1",
+  au: "+61",
+  ie: "+353",
+  nz: "+64",
+  de: "+49",
+  fr: "+33",
+  es: "+34",
+  it: "+39",
+  nl: "+31",
+  pl: "+48",
+  ae: "+971",
+  sa: "+966",
+  za: "+27",
+  in: "+91",
+  ph: "+63",
+  ng: "+234",
+  mx: "+52",
+  br: "+55",
+};
+
 const byIso2 = new Map(LAUNCH_COUNTRIES.map((country) => [country.iso2, country]));
+
+export function callingCodeForCountry(iso2: string) {
+  return CALLING_CODES[iso2.toLowerCase()] ?? CALLING_CODES[DEFAULT_COUNTRY] ?? "+44";
+}
 
 export function isLaunchCountry(iso2: string) {
   return byIso2.has(iso2.toLowerCase());
@@ -53,6 +80,14 @@ export function countryFromPathname(pathname: string) {
   const match = pathname.match(/^\/([a-z]{2})(?:\/|$)/i);
   if (!match?.[1] || !isLaunchCountry(match[1]) || isReservedCountryPath(match[1])) return null;
   return getLaunchCountry(match[1]);
+}
+
+export function pathForCountry(pathname: string, iso2: string) {
+  const path = pathname.startsWith("/") && !pathname.startsWith("//") ? pathname.split("?")[0] || "/" : "/";
+  const current = countryFromPathname(path);
+  if (!current) return path;
+  const rest = path.slice(current.iso2.length + 1) || "/";
+  return rest === "/" ? `/${iso2}` : `/${iso2}${rest}`;
 }
 
 export function languageForCountry(country: LaunchCountry, acceptLanguage?: string | null) {
@@ -80,6 +115,7 @@ const RESERVED = new Set([
   "action",
   "api",
   "for-professionals",
+  "contact",
 ]);
 
 export function isReservedCountryPath(iso2: string) {

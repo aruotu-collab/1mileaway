@@ -3,6 +3,8 @@
 import { redirect } from "next/navigation";
 import { createUnclaimedListingRecord } from "@/lib/listings/create";
 import { inviteUnclaimedBusiness } from "@/lib/claim/invite";
+import { prisma } from "@/lib/db";
+import { normalizeListingPhone } from "@/lib/phone";
 import { parseProfessionIds } from "@/lib/professions";
 
 export async function createOwnListing(formData: FormData) {
@@ -10,8 +12,12 @@ export async function createOwnListing(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const professionIds = parseProfessionIds(formData.getAll("professionId"));
   const locationId = String(formData.get("locationId") ?? "");
-  const phone = String(formData.get("phone") ?? "").trim();
-  if (!name || !email.includes("@") || !professionIds.length || !locationId || !phone) {
+  const phoneRaw = String(formData.get("phone") ?? "").trim();
+  const location = locationId
+    ? await prisma.location.findUnique({ where: { id: locationId }, include: { country: true } })
+    : null;
+  const phone = location ? normalizeListingPhone(phoneRaw, location.country.iso2) : null;
+  if (!name || !email.includes("@") || !professionIds.length || !location || !phone) {
     redirect("/join?error=missing");
   }
 
@@ -20,8 +26,8 @@ export async function createOwnListing(formData: FormData) {
     email,
     professionIds,
     locationId,
-    phone,
-    phoneReal: phone,
+    phone: phone.phoneDisplay,
+    phoneReal: phone.phoneReal,
     about: "Added by the professional from join.",
     contactEmailSource: "join",
     dataProvenance: "self_serve",

@@ -66,6 +66,7 @@ describe("siteActivityHeadlines", () => {
     const lines = siteActivityHeadlines(siteBase);
     expect(lines.some((line) => /ringing/i.test(line))).toBe(false);
     expect(lines).toContain("3 claimed listings · 9 listings not yet claimed");
+    expect(lines).toContain("Customers can ask unclaimed listings to take a job");
     expect(lines).toContain("32 types of help nearby");
     expect(lines).toContain("6 areas you can search");
   });
@@ -73,7 +74,7 @@ describe("siteActivityHeadlines", () => {
   it("shows claimed vs unclaimed for each trade", () => {
     const lines = siteActivityHeadlines(siteBase);
     expect(lines).toContain("2 claimed plumbers · 7 not yet claimed");
-    expect(lines).toContain("4 hairdressers listed — none claimed yet, so Call now is off");
+    expect(lines).toContain("4 hairdressers listed — customers can ask them to take the job");
     expect(lines).toContain("3 claimed locksmiths with Call now on");
   });
 
@@ -83,8 +84,17 @@ describe("siteActivityHeadlines", () => {
       unclaimedAsksToday: 3,
       unclaimedAsksAllTime: 41,
     });
-    expect(lines).toContain("3 customers asked unclaimed listings today — they could not get through");
-    expect(lines).toContain("41 customers have asked unclaimed listings and could not tap Call now");
+    expect(lines).toContain("3 customers asked unclaimed listings to take a job today");
+    expect(lines).toContain("41 customers have asked unclaimed listings to take a job");
+    expect(lines).toContain("Unclaimed listings are currently being asked to take jobs");
+  });
+
+  it("uses the visitor language for tape copy", () => {
+    const lines = siteActivityHeadlines(siteBase, "de");
+    expect(lines).toContain("3 beanspruchte Inserate · 9 Inserate noch nicht beansprucht");
+    expect(lines).toContain("32 Arten von Hilfe in der Nähe");
+    expect(lines).toContain("6 Gebiete zum Suchen");
+    expect(lines.some((line) => /claimed listings/i.test(line))).toBe(false);
   });
 
   it("shows Call now on and new listings only from real counts", () => {
@@ -104,7 +114,7 @@ describe("tradeClaimHeadline", () => {
       "1 claimed electrician with Call now on",
     );
     expect(tradeClaimHeadline({ name: "Heating engineer", plural: "Heating engineers", claimed: 0, unclaimed: 1 })).toBe(
-      "1 heating engineer listed — none claimed yet, so Call now is off",
+      "1 heating engineer listed — customers can ask them to take the job",
     );
   });
 

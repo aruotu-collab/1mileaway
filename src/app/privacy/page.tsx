@@ -6,6 +6,7 @@ export default function PrivacyPage() {
         1mileaway stores account emails, listing details, the phone number a professional chooses for customers to call, and payment references.
         We do not sell visitor contact details as a list. Customers ring the professional directly; we do not record those calls.
         When a customer taps Call now we email the professional that the call came through 1mileaway.
+        If you use Contact us we store your name, email, and message so we can reply.
       </p>
     </main>
   );

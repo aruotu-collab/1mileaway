@@ -51,6 +51,49 @@ async function lookupDirectory(countryId: string, query: string) {
   });
 }
 
+export async function lookupUkPlace(name: string) {
+  try {
+    const res = await fetch(`https://api.postcodes.io/places?q=${encodeURIComponent(name)}`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as {
+      result?: Array<{ latitude?: number; longitude?: number; name_1?: string }>;
+    };
+    const first = body.result?.[0];
+    if (first?.latitude == null || first.longitude == null) return null;
+    return { lat: first.latitude, lng: first.longitude, label: first.name_1 ?? name };
+  } catch {
+    return null;
+  }
+}
+
+export async function lookupUkPostcodes(codes: string[]) {
+  const found = new Map<string, GeoPoint>();
+  const unique = [...new Set(codes.map((code) => code.trim().toUpperCase().replace(/\s+/g, " ")).filter(Boolean))];
+  for (let i = 0; i < unique.length; i += 100) {
+    const chunk = unique.slice(i, i + 100);
+    try {
+      const res = await fetch("https://api.postcodes.io/postcodes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postcodes: chunk }),
+      });
+      if (!res.ok) continue;
+      const body = (await res.json()) as {
+        result?: Array<{ query?: string; result?: { latitude?: number; longitude?: number } | null }>;
+      };
+      for (const row of body.result ?? []) {
+        if (row.result?.latitude == null || row.result.longitude == null || !row.query) continue;
+        found.set(row.query.toUpperCase().replace(/\s+/g, " "), { lat: row.result.latitude, lng: row.result.longitude });
+      }
+    } catch {
+      // try the next chunk
+    }
+  }
+  return found;
+}
+
 async function lookupUkPostcode(query: string): Promise<GeoPoint & { label: string } | null> {
   const compact = query.trim().replace(/\s+/g, "").toUpperCase();
   const path = UK_POSTCODE.test(compact) ? `postcodes/${encodeURIComponent(compact)}` : `outcodes/${encodeURIComponent(compact)}`;
@@ -71,7 +114,7 @@ async function lookupUkPostcode(query: string): Promise<GeoPoint & { label: stri
   }
 }
 
-async function lookupAddress(query: string, countryIso2: string): Promise<GeoPoint & { label: string } | null> {
+export async function lookupAddress(query: string, countryIso2: string): Promise<GeoPoint & { label: string } | null> {
   const params = new URLSearchParams({
     q: query,
     format: "json",

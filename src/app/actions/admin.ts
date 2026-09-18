@@ -104,73 +104,30 @@ export async function importListingsCsv(formData: FormData) {
   const user = await requireAdmin();
   const file = formData.get("file");
   const defaultSource = String(formData.get("source") ?? "csv").trim() || "csv";
+  const invite = String(formData.get("invite") ?? "") === "1";
   if (!(file instanceof File) || file.size === 0) {
     redirect("/admin/professionals?importError=file");
   }
-  if (file.size > 200_000) {
+  if (file.size > 12_000_000) {
     redirect("/admin/professionals?importError=size");
   }
-  const { parseListingCsv } = await import("@/lib/listings/csv");
-  const { createUnclaimedListingRecord, resolveLocationKey, resolveProfessionKey } = await import(
-    "@/lib/listings/create"
-  );
-  const { inviteUnclaimedBusiness } = await import("@/lib/claim/invite");
-  const rows = parseListingCsv(await file.text());
-  if (rows.length === 0 || rows.length > 200) {
+  const { parseListingSpreadsheet } = await import("@/lib/listings/csv");
+  const { importListingRows } = await import("@/lib/listings/import");
+  const rows = await parseListingSpreadsheet(Buffer.from(await file.arrayBuffer()), file.name);
+  if (rows.length === 0 || rows.length > 50_000) {
     redirect("/admin/professionals?importError=rows");
   }
 
-  let created = 0;
-  let invited = 0;
-  let skipped = 0;
-  let invalid = 0;
-
-  for (const row of rows) {
-    if (!row.name || !row.profession || !row.location) {
-      invalid += 1;
-      continue;
-    }
-    const profession = await resolveProfessionKey(row.profession);
-    const location = await resolveLocationKey(row.location, row.country || "gb");
-    if (!profession || !location) {
-      invalid += 1;
-      continue;
-    }
-    const email = row.email.includes("@") ? row.email : null;
-    const provenance = `csv:${row.source || defaultSource}`;
-    const result = await createUnclaimedListingRecord({
-      name: row.name,
-      email,
-      professionId: profession.id,
-      locationId: location.id,
-      website: row.website || null,
-      phone: row.phone || null,
-      about: row.about || null,
-      contactEmailSource: email ? provenance : null,
-      dataProvenance: provenance,
-      availabilitySource: "csv",
-    });
-    if (!result.created) {
-      skipped += 1;
-      continue;
-    }
-    created += 1;
-    if (email) {
-      const invite = await inviteUnclaimedBusiness({
-        businessId: result.business.id,
-        locationId: location.id,
-        professionId: profession.id,
-        source: "self",
-      });
-      if (invite?.claimToken) invited += 1;
-    }
-  }
+  const { created, invited, skipped, invalid } = await importListingRows(rows, {
+    source: defaultSource,
+    invite,
+  });
 
   await writeAudit({
     actorId: user.id,
     action: "listing.csv_imported",
     entityType: "business",
-    metadata: { created, invited, skipped, invalid, source: defaultSource },
+    metadata: { created, invited, skipped, invalid, source: defaultSource, invite, filename: file.name },
   });
   redirect(
     `/admin/professionals?created=${created}&invited=${invited}&skipped=${skipped}&invalid=${invalid}`,

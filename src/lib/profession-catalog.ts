@@ -34,7 +34,7 @@ export const PROFESSION_DEFS: ProfessionDef[] = [
     emergencySlug: "emergency-plumbers",
     categorySlug: "home-emergency",
     emergencyEligible: true,
-    synonyms: ["plumber", "plumbers"],
+    synonyms: ["plumber", "plumbers", "plumbing"],
   },
   {
     internalId: "electrician",
@@ -44,7 +44,7 @@ export const PROFESSION_DEFS: ProfessionDef[] = [
     emergencySlug: "emergency-electricians",
     categorySlug: "home-emergency",
     emergencyEligible: true,
-    synonyms: ["electrician", "electricians"],
+    synonyms: ["electrician", "electricians", "electrical"],
   },
   {
     internalId: "locksmith",
@@ -74,7 +74,7 @@ export const PROFESSION_DEFS: ProfessionDef[] = [
     emergencySlug: "emergency-heating",
     categorySlug: "home-emergency",
     emergencyEligible: true,
-    synonyms: ["heating", "heating engineer", "heating engineers"],
+    synonyms: ["heating", "heating engineer", "heating engineers", "gas engineer", "gas engineers", "heating contractor"],
   },
   {
     internalId: "hvac",
@@ -84,7 +84,7 @@ export const PROFESSION_DEFS: ProfessionDef[] = [
     emergencySlug: "emergency-hvac",
     categorySlug: "home-emergency",
     emergencyEligible: true,
-    synonyms: ["hvac", "hvac technician", "hvac technicians"],
+    synonyms: ["hvac", "hvac technician", "hvac technicians", "air conditioning", "hvac technician / air conditioning"],
   },
   {
     internalId: "gardener",
@@ -94,7 +94,7 @@ export const PROFESSION_DEFS: ProfessionDef[] = [
     emergencySlug: null,
     categorySlug: "garden",
     emergencyEligible: false,
-    synonyms: ["gardener", "gardeners"],
+    synonyms: ["gardener", "gardeners", "landscaper", "landscapers", "landscape designer"],
   },
   {
     internalId: "cleaner",
@@ -134,7 +134,7 @@ export const PROFESSION_DEFS: ProfessionDef[] = [
     emergencySlug: null,
     categorySlug: "mobile",
     emergencyEligible: false,
-    synonyms: ["mobile laundry", "mobile laundry services"],
+    synonyms: ["mobile laundry", "mobile laundry services", "mobile laundry service"],
   },
   {
     internalId: "mobile_mechanic",
@@ -194,7 +194,7 @@ export const PROFESSION_DEFS: ProfessionDef[] = [
     emergencySlug: null,
     categorySlug: "mobile",
     emergencyEligible: false,
-    synonyms: ["mobile ironing", "mobile ironing services"],
+    synonyms: ["mobile ironing", "mobile ironing services", "mobile ironing service"],
   },
   {
     internalId: "hairdresser",

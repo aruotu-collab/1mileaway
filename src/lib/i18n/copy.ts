@@ -24,6 +24,7 @@ const en = {
   liveBadge: "Live",
   soonBadge: "Soon",
   billingNote: "Professionals pay one monthly listing in US dollars, in every country.",
+  contactUs: "Contact us",
 };
 
 type Copy = typeof en;
@@ -50,6 +51,7 @@ const de: Copy = {
   liveBadge: "Live",
   soonBadge: "Bald",
   billingNote: "Fachleute zahlen überall denselben Monatspreis in US-Dollar.",
+  contactUs: "Kontakt",
 };
 
 const fr: Copy = {
@@ -74,6 +76,7 @@ const fr: Copy = {
   liveBadge: "Ouvert",
   soonBadge: "Bientôt",
   billingNote: "Les professionnels paient un seul abonnement mensuel en dollars US, dans tous les pays.",
+  contactUs: "Contact",
 };
 
 const es: Copy = {
@@ -97,6 +100,7 @@ const es: Copy = {
   liveBadge: "Abierto",
   soonBadge: "Pronto",
   billingNote: "Los profesionales pagan una sola cuota mensual en dólares, en todos los países.",
+  contactUs: "Contacto",
 };
 
 const it: Copy = {
@@ -120,6 +124,7 @@ const it: Copy = {
   liveBadge: "Attivo",
   soonBadge: "Presto",
   billingNote: "I professionisti pagano un solo abbonamento mensile in dollari, in ogni paese.",
+  contactUs: "Contatti",
 };
 
 const nl: Copy = {
@@ -143,6 +148,7 @@ const nl: Copy = {
   liveBadge: "Live",
   soonBadge: "Binnenkort",
   billingNote: "Vakmensen betalen overal hetzelfde maandbedrag in Amerikaanse dollars.",
+  contactUs: "Contact",
 };
 
 const pl: Copy = {
@@ -166,6 +172,7 @@ const pl: Copy = {
   liveBadge: "Działa",
   soonBadge: "Wkrótce",
   billingNote: "Fachowcy płacą jedną miesięczną stawkę w dolarach, w każdym kraju.",
+  contactUs: "Kontakt",
 };
 
 const ar: Copy = {
@@ -189,6 +196,7 @@ const ar: Copy = {
   liveBadge: "متاح",
   soonBadge: "قريباً",
   billingNote: "يدفع المهنيون اشتراكاً شهرياً واحداً بالدولار في كل الدول.",
+  contactUs: "اتصل بنا",
 };
 
 const pt: Copy = {
@@ -212,6 +220,7 @@ const pt: Copy = {
   liveBadge: "No ar",
   soonBadge: "Em breve",
   billingNote: "Profissionais pagam uma única mensalidade em dólares, em todos os países.",
+  contactUs: "Fale conosco",
 };
 
 const dictionaries: Record<UiLanguage, Copy> = { en, de, fr, es, it, nl, pl, ar, pt };

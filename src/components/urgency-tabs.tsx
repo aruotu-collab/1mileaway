@@ -6,13 +6,20 @@ type Tab = {
   href?: string;
   label: string;
   selected: boolean;
+  tone?: "ink" | "emergency";
   onSelect?: () => void;
 };
 
 function TabButton({ tab }: { tab: Tab }) {
-  const className = tab.selected
-    ? "flex min-w-0 flex-1 items-center justify-center rounded-full px-2 py-2.5 text-center text-xs font-semibold bg-ink text-paper-strong sm:px-4 sm:text-sm"
-    : "flex min-w-0 flex-1 items-center justify-center rounded-full px-2 py-2.5 text-center text-xs font-semibold text-ink-soft hover:text-ink sm:px-4 sm:text-sm";
+  const selected =
+    tab.tone === "emergency"
+      ? "flex min-w-0 flex-1 items-center justify-center rounded-full px-2 py-2.5 text-center text-xs font-semibold bg-emergency text-paper-strong sm:px-4 sm:text-sm"
+      : "flex min-w-0 flex-1 items-center justify-center rounded-full px-2 py-2.5 text-center text-xs font-semibold bg-ink text-paper-strong sm:px-4 sm:text-sm";
+  const idle =
+    tab.tone === "emergency"
+      ? "flex min-w-0 flex-1 items-center justify-center rounded-full px-2 py-2.5 text-center text-xs font-semibold text-emergency hover:text-emergency sm:px-4 sm:text-sm"
+      : "flex min-w-0 flex-1 items-center justify-center rounded-full px-2 py-2.5 text-center text-xs font-semibold text-ink-soft hover:text-ink sm:px-4 sm:text-sm";
+  const className = tab.selected ? selected : idle;
 
   if (tab.href) {
     return (
@@ -58,6 +65,7 @@ export function UrgencyTabs({
         tab={{
           label: "Emergency",
           selected: emergency,
+          tone: "emergency",
           href: emergencyHref,
           onSelect: onChange ? () => onChange(true) : undefined,
         }}

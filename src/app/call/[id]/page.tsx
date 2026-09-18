@@ -7,6 +7,7 @@ import { BackLink } from "@/components/back-link";
 import { reportNoAnswer, reportTheyAnswered, submitCallFeedback } from "@/app/actions/feedback";
 import { nextCallableListing, skippedBusinessIdsFromPayload } from "@/lib/calls/next";
 import { CALL_OUTCOME } from "@/lib/feedback";
+import { formatDistanceMiles } from "@/lib/locations/distance";
 import { toTelHref } from "@/lib/phone";
 
 export default async function CallPage({
@@ -68,7 +69,9 @@ export default async function CallPage({
         </BackLink>
       </p>
       <h1 className="serif text-4xl">Calling {call.business.name}</h1>
-      <p className="mt-3 text-ink-soft">This rings their phone directly.</p>
+      <p className="mt-3 text-ink-soft">
+        Your phone is placing this call, the same as if you had dialled them yourself. 1mileaway is not on the line.
+      </p>
       <div className="card mt-6 p-5">
         <p className="font-semibold">When they pick up, say:</p>
         <p className="serif mt-2 text-2xl">“I’m calling from 1mileaway.”</p>
@@ -78,10 +81,15 @@ export default async function CallPage({
         </p>
       </div>
       {tel ? (
-        <a className="btn btn-primary mt-6 w-full" href={tel}>
-          <PhoneIcon />
-          Call {call.toNumber}
-        </a>
+        <>
+          <a className="btn btn-call mt-6 w-full" href={tel}>
+            <PhoneIcon />
+            Call with your phone
+          </a>
+          <p className="mt-2 text-center text-sm text-ink-soft">
+            {call.toNumber} · your phone dials this number
+          </p>
+        </>
       ) : (
         <p className="card mt-6 p-4">This professional has not added a phone number yet.</p>
       )}
@@ -114,7 +122,7 @@ export default async function CallPage({
           <h2 className="serif text-2xl">They did not pick up</h2>
           <p className="mt-2 text-ink-soft">
             {next
-              ? `Try the next closest professional. ${next.name} is ${next.distanceMiles.toFixed(1)} miles from this area.`
+              ? `Try the next closest professional. ${next.name} is ${formatDistanceMiles(next.distanceMiles)}.`
               : "There is nobody else nearby who can take a call through 1mileaway right now."}
           </p>
           {next ? (

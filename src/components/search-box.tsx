@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { goToMarketplace, labelForCoordinates } from "@/app/actions/search";
+import { setAppPending } from "@/lib/pending-ui";
 import { LocationField } from "@/components/location-field";
 import { UrgencyTabs } from "@/components/urgency-tabs";
 import type { LocationChoice } from "@/lib/locations/suggest";
@@ -30,6 +31,7 @@ export function SearchBox({
   locations?: LocationChoice[];
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const inputId = useId();
   const [pending, setPending] = useState(false);
   const [location, setLocation] = useState(defaultLocation);
@@ -62,6 +64,11 @@ export function SearchBox({
         "plumbers",
     );
   }, [defaultProfession, professions]);
+
+  useEffect(() => {
+    setPending(false);
+    setAppPending(false);
+  }, [pathname]);
 
   function onLocationChange(value: string) {
     setLocation(value);
@@ -108,18 +115,26 @@ export function SearchBox({
         const formData = new FormData(event.currentTarget);
         setError(null);
         setPending(true);
+        setAppPending(true);
         void (async () => {
           try {
             const result = await goToMarketplace(formData);
             if ("error" in result) {
               setError(result.error);
+              setPending(false);
+              setAppPending(false);
               return;
+            }
+            const nextPath = result.href.split("?")[0] ?? result.href;
+            if (nextPath === pathname) {
+              setPending(false);
+              setAppPending(false);
             }
             router.push(result.href);
           } catch {
             setError("Search did not finish. Try again.");
-          } finally {
             setPending(false);
+            setAppPending(false);
           }
         })();
       }}
@@ -148,6 +163,7 @@ export function SearchBox({
             value={profession}
             onChange={(event) => setProfession(event.target.value)}
             required
+            disabled={pending}
           >
             {groupedProfessions(professions).map((group) => (
               <optgroup key={group.name} label={group.name}>
@@ -178,11 +194,21 @@ export function SearchBox({
           <input type="hidden" name="lat" value={lat} />
           <input type="hidden" name="lng" value={lng} />
           {isEmergency ? <input type="hidden" name="emergency" value="1" /> : null}
-          <button className="btn btn-primary w-full sm:w-auto" type="submit" disabled={pending}>
-            {pending ? "Finding…" : "Search nearby"}
+          <button
+            className={`btn btn-primary w-full sm:w-auto${pending ? " btn-pending" : ""}`}
+            type="submit"
+            disabled={pending}
+            aria-busy={pending}
+          >
+            {pending ? "Searching…" : "Search nearby"}
           </button>
         </div>
       </div>
+      {pending ? (
+        <p className="text-sm text-ink-soft" aria-live="polite">
+          Still looking up nearby professionals…
+        </p>
+      ) : null}
       {error ? <p className="text-sm text-rust">{error}</p> : null}
     </form>
   );

@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { createOwnListing } from "@/app/actions/join";
+import { PhoneField } from "@/components/phone-field";
 import { ProfessionPicker } from "@/components/profession-picker";
+import { SubmitButton } from "@/components/submit-button";
+import { callingCodeForCountry } from "@/lib/countries/catalog";
 import { getRequestUi } from "@/lib/countries/request";
 import { listProfessionPicks } from "@/lib/listings/professions";
+import { phonePlaceholder } from "@/lib/phone";
 
 export default async function JoinPage({
   searchParams,
@@ -13,6 +17,7 @@ export default async function JoinPage({
   const query = await searchParams;
   const ui = await getRequestUi();
   const countryIso = ui.country.iso2;
+  const callingCode = callingCodeForCountry(countryIso);
   const [professions, locations] = await Promise.all([
     listProfessionPicks(countryIso),
     prisma.location.findMany({
@@ -20,6 +25,7 @@ export default async function JoinPage({
       orderBy: { name: "asc" },
     }),
   ]);
+  const listingsOpen = locations.length > 0;
   const professionKey = (query.profession ?? "").toLowerCase();
   const locationKey = (query.location ?? "").toLowerCase();
   const selectedProfession =
@@ -49,12 +55,7 @@ export default async function JoinPage({
         so you can see if it is worth paying for. We do not collect contact details from other websites.
       </p>
       {query.error ? <p className="mt-3 text-rust">Please fill in every field, including at least one trade.</p> : null}
-      {locations.length === 0 ? (
-        <p className="card mt-6 p-5 text-ink-soft">
-          We are not taking listings in {ui.country.name} yet. Switch country to the United Kingdom to join the live
-          marketplace, or check back when this country opens.
-        </p>
-      ) : (
+      {listingsOpen ? (
       <form action={createOwnListing} className="card mt-6 grid gap-3 p-5">
         <label>
           <span className="mb-1 block text-sm font-medium">Business name</span>
@@ -91,19 +92,19 @@ export default async function JoinPage({
         </label>
         <label>
           <span className="mb-1 block text-sm font-medium">Phone customers should call</span>
-          <input
-            className="w-full rounded-2xl border border-line bg-paper px-4 py-3"
-            type="tel"
-            name="phone"
-            autoComplete="tel"
-            placeholder="020 7946 0101"
-            required
-          />
+          <PhoneField callingCode={callingCode} placeholder={phonePlaceholder(countryIso)} required />
+          <span className="mt-1 block text-sm text-ink-soft">
+            Type the number you answer, including the 0 if you usually write it. {callingCode} is already set from this
+            country so Call now works from any phone.
+          </span>
         </label>
-        <button className="btn btn-primary" type="submit">
-          Create listing
-        </button>
+        <SubmitButton pendingLabel="Creating listing…">Create listing</SubmitButton>
       </form>
+      ) : (
+        <p className="card mt-6 p-5 text-ink-soft">
+          We are not taking listings in {ui.country.nativeName} yet. Switch country to the United Kingdom to join the live
+          marketplace, or check back when this country opens.
+        </p>
       )}
       <p className="mt-8 text-sm text-ink-soft">
         Already invited?{" "}

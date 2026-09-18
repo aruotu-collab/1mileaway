@@ -14,6 +14,7 @@ const filters = [
   { id: "claimed", label: "Claimed" },
   { id: "trial", label: "On trial" },
   { id: "live", label: "Call now on" },
+  { id: "asked", label: "Asked" },
 ] as const;
 
 export default async function AdminProfessionalsPage({
@@ -30,14 +31,24 @@ export default async function AdminProfessionalsPage({
 }) {
   const imported = await searchParams;
   const view = filters.some((filter) => filter.id === imported.view) ? imported.view : "all";
-  const [professions, locations, businesses, askCounts] = await Promise.all([
+  const askCounts = await prisma.lead.groupBy({
+    by: ["businessId"],
+    where: { callId: null },
+    _count: { _all: true },
+  });
+  const asksByBusiness = new Map(askCounts.map((row) => [row.businessId, row._count._all]));
+  const askedIds = askCounts.map((row) => row.businessId);
+  const [professions, locations, businesses] = await Promise.all([
     listProfessionPicks(),
     prisma.location.findMany({
       where: { country: { iso2: "gb" }, type: "district", active: true },
       orderBy: { name: "asc" },
     }),
     prisma.business.findMany({
-      where: { deletedAt: null },
+      where: {
+        deletedAt: null,
+        ...(view === "asked" ? { id: { in: askedIds } } : {}),
+      },
       include: {
         availability: true,
         subscription: true,
@@ -47,13 +58,7 @@ export default async function AdminProfessionalsPage({
       },
       orderBy: { updatedAt: "desc" },
     }),
-    prisma.lead.groupBy({
-      by: ["businessId"],
-      where: { callId: null },
-      _count: { _all: true },
-    }),
   ]);
-  const asksByBusiness = new Map(askCounts.map((row) => [row.businessId, row._count._all]));
 
   const rows = businesses
     .map((biz) => {
@@ -85,6 +90,7 @@ export default async function AdminProfessionalsPage({
       }
       if (view === "trial") return biz.trial;
       if (view === "live") return biz.callNowOn;
+      if (view === "asked") return biz.asks > 0;
       return true;
     });
 
@@ -98,7 +104,7 @@ export default async function AdminProfessionalsPage({
       {imported.created || imported.importError ? (
         <p className="card mt-6 p-4">
           {imported.importError
-            ? "That file could not be imported. Use a CSV under 200 rows with name, profession and location."
+            ? "That file could not be imported. Use an Excel or CSV file with a name, trade and town on each row."
             : `Imported ${imported.created} listings · ${imported.invited ?? 0} invited · ${imported.skipped ?? 0} skipped · ${imported.invalid ?? 0} invalid.`}
         </p>
       ) : null}
@@ -162,24 +168,34 @@ export default async function AdminProfessionalsPage({
       </div>
 
       <form action={importListingsCsv} className="card mt-10 grid gap-3 p-5">
-        <h2 className="serif text-2xl">Import listings from CSV</h2>
+        <h2 className="serif text-2xl">Import listings from Excel or CSV</h2>
         <p className="text-sm text-ink-soft">
-          Columns: name, email, profession, location, website, phone, about, source. Profession is an id such as plumber
-          or hairdresser. Location is a slug such as catford. Email is optional — rows without one are listed but not
-          emailed. Only import contacts you are allowed to use.
+          Upload .xlsx or .csv. Needed columns are a business name, a trade, and a town. Email, phone, website and about
+          are optional. New towns are added automatically. Call now stays off until they claim. Leave invite emails
+          unchecked for a large file so we do not mail thousands of people on day one.
         </p>
         <label>
           <span className="mb-1 block text-sm font-medium">Provenance</span>
           <input
             className="w-full rounded-2xl border border-line bg-paper px-4 py-3"
             name="source"
-            placeholder="trade-show, partner, inbound"
+            placeholder="licensed list, partner, inbound"
             required
           />
         </label>
-        <input className="rounded-2xl border border-line bg-paper px-4 py-3" type="file" name="file" accept=".csv,text/csv" required />
+        <input
+          className="rounded-2xl border border-line bg-paper px-4 py-3"
+          type="file"
+          name="file"
+          accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+          required
+        />
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="invite" value="1" />
+          Email claim invites now
+        </label>
         <button className="btn btn-primary" type="submit">
-          Import and invite
+          Import listings
         </button>
       </form>
       <form action={createUnclaimedListing} className="card mt-6 grid gap-3 p-5">

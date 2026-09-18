@@ -73,7 +73,7 @@ export async function createUnclaimedListingRecord(input: CreateUnclaimedInput) 
   return { business, created: true as const, reason: null };
 }
 
-export async function resolveProfessionKey(value: string) {
+async function findProfessionByTerm(value: string) {
   const term = value.trim().toLowerCase();
   if (!term) return null;
   return prisma.profession.findFirst({
@@ -83,9 +83,24 @@ export async function resolveProfessionKey(value: string) {
         { internalId: term },
         { slugs: { some: { slug: term } } },
         { slugs: { some: { emergencySlug: term } } },
+        { slugs: { some: { name: { equals: value.trim(), mode: "insensitive" } } } },
+        { slugs: { some: { pluralName: { equals: value.trim(), mode: "insensitive" } } } },
+        { synonyms: { some: { term } } },
       ],
     },
   });
+}
+
+export async function resolveProfessionKey(value: string) {
+  const parts = value
+    .split(/[/,&]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  for (const part of [value.trim(), ...parts]) {
+    const match = await findProfessionByTerm(part);
+    if (match) return match;
+  }
+  return null;
 }
 
 export async function resolveLocationKey(value: string, countryIso = "gb") {

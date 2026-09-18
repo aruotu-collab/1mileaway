@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COUNTRY_COOKIE } from "@/lib/constants";
-import { isLaunchCountry } from "@/lib/countries/catalog";
+import { isLaunchCountry, pathForCountry } from "@/lib/countries/catalog";
 
 export async function setVisitorCountry(formData: FormData) {
   const iso2 = String(formData.get("country") ?? "").toLowerCase();
@@ -14,5 +14,5 @@ export async function setVisitorCountry(formData: FormData) {
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "lax",
   });
-  redirect("/");
+  redirect(pathForCountry(String(formData.get("next") ?? "/"), iso2));
 }

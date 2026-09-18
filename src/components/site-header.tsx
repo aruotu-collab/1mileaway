@@ -23,6 +23,7 @@ export async function SiteHeader() {
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <CountryPicker
             current={ui.country.iso2}
+            nextPath={ui.pathname}
             liveIso2={liveIso2}
             label={ui.copy.countryLabel}
             liveBadge={ui.copy.liveBadge}
@@ -32,6 +33,7 @@ export async function SiteHeader() {
           <SiteNav
             signedIn={Boolean(user)}
             admin={user ? isAdmin(user.role) : false}
+            currentPath={ui.pathname}
             labels={ui.copy}
           />
         </div>

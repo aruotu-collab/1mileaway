@@ -5,7 +5,7 @@ import { rankingAnswerScore } from "@/lib/reputation";
 export type Rankable = {
   id: string;
   name: string;
-  distanceMiles: number;
+  distanceMiles: number | null;
   availabilityStatus: string;
   availabilityExpiresAt: Date | null;
   availabilityConfirmedAt: Date | null;
@@ -47,8 +47,8 @@ export function rankListings<T extends Rankable>(items: T[], now = new Date()): 
                 ? 0.35
                 : 0.08;
 
-      const distance =
-        item.distanceMiles <= 1 ? 1 : item.distanceMiles <= 3 ? 0.78 : item.distanceMiles <= 8 ? 0.45 : 0.2;
+      const miles = item.distanceMiles ?? 99;
+      const distance = miles <= 1 ? 1 : miles <= 3 ? 0.78 : miles <= 8 ? 0.45 : 0.2;
 
       const answer = rankingAnswerScore(item.answerRate, item.answerReports);
       const rating = item.ratingCount > 0 ? clamp(item.ratingAvg / 5) : 0.35;
@@ -87,5 +87,5 @@ export function rankListings<T extends Rankable>(items: T[], now = new Date()): 
 
       return { ...item, score, sponsored, explanation };
     })
-    .sort((a, b) => b.score - a.score || a.distanceMiles - b.distanceMiles || a.name.localeCompare(b.name));
+    .sort((a, b) => b.score - a.score || (a.distanceMiles ?? 99) - (b.distanceMiles ?? 99) || a.name.localeCompare(b.name));
 }

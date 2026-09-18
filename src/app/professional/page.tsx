@@ -21,8 +21,11 @@ import {
   marketplaceStats,
   subscriptionPriceLabel,
 } from "@/lib/subscription";
+import { PhoneField } from "@/components/phone-field";
 import { ProfessionPicker } from "@/components/profession-picker";
+import { callingCodeForCountry } from "@/lib/countries/catalog";
 import { listProfessionPicks } from "@/lib/listings/professions";
+import { nationalNumberForInput, phonePlaceholder } from "@/lib/phone";
 
 function StatCard({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
   return (
@@ -316,20 +319,17 @@ export default async function ProfessionalHome({
       <section className="card mt-6 p-5">
         <h2 className="serif text-2xl">Phone customers call</h2>
         <p className="mt-2 text-ink-soft">Call now rings this number directly. Use the phone you actually answer.</p>
-        <form action={updateListingPhone} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+        <form action={updateListingPhone} className="mt-4 grid gap-3">
           <label>
             <span className="sr-only">Phone number</span>
-            <input
-              className="w-full rounded-2xl border border-line bg-paper px-4 py-3"
-              type="tel"
-              name="phone"
-              autoComplete="tel"
-              defaultValue={biz.phoneReal ?? biz.phoneDisplay ?? ""}
-              placeholder="020 7946 0101"
+            <PhoneField
+              callingCode={callingCodeForCountry(country)}
+              defaultValue={nationalNumberForInput(biz.phoneReal ?? biz.phoneDisplay, country)}
+              placeholder={phonePlaceholder(country)}
               required
             />
           </label>
-          <button className="btn btn-primary" type="submit">
+          <button className="btn btn-primary justify-self-start" type="submit">
             Save number
           </button>
         </form>

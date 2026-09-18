@@ -5,6 +5,7 @@ import { MiniRadar } from "@/components/nearby-radar";
 import { PhoneIcon } from "@/components/phone-icon";
 import { PushForm } from "@/components/push-form";
 import { AVAILABILITY } from "@/lib/constants";
+import { formatDistanceMiles } from "@/lib/locations/distance";
 import { canShowAnswerRate } from "@/lib/reputation";
 
 type ListingCardProps = {
@@ -12,7 +13,7 @@ type ListingCardProps = {
   slug: string;
   name: string;
   about?: string | null;
-  distanceMiles: number;
+  distanceMiles: number | null;
   availabilityStatus: string;
   availabilityConfirmedAt?: Date | null;
   answerRate: number;
@@ -64,14 +65,12 @@ export function ListingCard(props: ListingCardProps) {
               <span className="rounded-full bg-sand px-2 py-0.5 text-xs font-semibold">Not yet claimed</span>
             ) : null}
           </div>
-          <p className="mt-2 text-sm text-ink-soft">
-            {props.distanceMiles.toFixed(1)} miles {props.fromVisitor ? "from you" : "from this area"}
-          </p>
+          <p className="mt-2 text-sm text-ink-soft">{formatDistanceMiles(props.distanceMiles, props.fromVisitor)}</p>
         </div>
         <MiniRadar
-          distanceMiles={props.distanceMiles}
+          distanceMiles={props.distanceMiles ?? 1.5}
           live={props.availabilityStatus === AVAILABILITY.AVAILABLE_NOW}
-          label={`${props.distanceMiles.toFixed(1)} miles ${props.fromVisitor ? "from you" : "from this area"}`}
+          label={formatDistanceMiles(props.distanceMiles, props.fromVisitor)}
         />
       </div>
       <div className="mt-3">
@@ -96,39 +95,44 @@ export function ListingCard(props: ListingCardProps) {
           ) : null}
         </dl>
       ) : null}
-      <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+      <div className="mt-5">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {props.phone ? (
+            <PushForm action={startCall} className="flex-1">
+              <input type="hidden" name="businessId" value={props.businessId} />
+              <input type="hidden" name="professionId" value={props.professionId ?? ""} />
+              <input type="hidden" name="locationId" value={props.locationId ?? ""} />
+              <input type="hidden" name="country" value={props.country} />
+              <input type="hidden" name="returnTo" value={props.resultsHref ?? `/${props.country}/p/${props.slug}`} />
+              {props.skip ? <input type="hidden" name="skip" value={props.skip} /> : null}
+              <button className="btn btn-call w-full" type="submit">
+                <PhoneIcon />
+                Call now
+              </button>
+            </PushForm>
+          ) : (
+            <PushForm action={askTradesman} className="flex-1">
+              <input type="hidden" name="businessId" value={props.businessId} />
+              <input type="hidden" name="professionId" value={props.professionId ?? ""} />
+              <input type="hidden" name="locationId" value={props.locationId ?? ""} />
+              <input type="hidden" name="returnTo" value={props.resultsHref ?? `/${props.country}/p/${props.slug}`} />
+              <button className="btn btn-primary w-full" type="submit">
+                Ask them to take this job
+              </button>
+            </PushForm>
+          )}
+          {props.showProfileLink === false ? null : (
+            <Link href={profileHref} className="btn btn-ghost flex-1">
+              {props.claimStatus === "UNCLAIMED" ? "Is this your business?" : "View profile"}
+            </Link>
+          )}
+        </div>
         {props.phone ? (
-          <PushForm action={startCall} className="flex-1">
-            <input type="hidden" name="businessId" value={props.businessId} />
-            <input type="hidden" name="professionId" value={props.professionId ?? ""} />
-            <input type="hidden" name="locationId" value={props.locationId ?? ""} />
-            <input type="hidden" name="country" value={props.country} />
-            <input type="hidden" name="returnTo" value={props.resultsHref ?? `/${props.country}/p/${props.slug}`} />
-            {props.skip ? <input type="hidden" name="skip" value={props.skip} /> : null}
-            <button className="btn btn-primary w-full" type="submit">
-              <PhoneIcon />
-              Call now
-            </button>
-          </PushForm>
-        ) : props.canRequest ? (
-          <PushForm action={askTradesman} className="flex-1">
-            <input type="hidden" name="businessId" value={props.businessId} />
-            <input type="hidden" name="professionId" value={props.professionId ?? ""} />
-            <input type="hidden" name="locationId" value={props.locationId ?? ""} />
-            <input type="hidden" name="returnTo" value={props.resultsHref ?? `/${props.country}/p/${props.slug}`} />
-            <button className="btn btn-primary w-full" type="submit">
-              Ask them to take this job
-            </button>
-          </PushForm>
+          <p className="mt-1.5 text-center text-xs text-ink-soft">Uses your phone. You place this call yourself.</p>
         ) : (
-          <p className="flex-1 rounded-2xl border border-line bg-paper px-4 py-3 text-sm text-ink-soft">
+          <p className="mt-2 rounded-2xl border border-line bg-paper px-4 py-3 text-sm text-ink-soft">
             This listing is not taking calls through 1mileaway yet.
           </p>
-        )}
-        {props.showProfileLink === false ? null : (
-          <Link href={profileHref} className="btn btn-ghost flex-1">
-            {props.claimStatus === "UNCLAIMED" ? "Is this your business?" : "View profile"}
-          </Link>
         )}
       </div>
     </article>

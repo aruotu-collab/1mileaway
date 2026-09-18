@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   LAUNCH_COUNTRIES,
+  callingCodeForCountry,
   countryFromPathname,
+  pathForCountry,
   getLaunchCountry,
   languageForCountry,
   stripeCheckoutLocale,
@@ -27,6 +29,23 @@ describe("launch countries", () => {
     expect(getLaunchCountry("sa").language).toBe("ar");
     expect(stripeCheckoutLocale("ar")).toBe("ar");
     expect(stripeCheckoutLocale("pt")).toBe("pt-BR");
+  });
+
+  it("has a calling code for every launch country", () => {
+    expect(callingCodeForCountry("gb")).toBe("+44");
+    expect(callingCodeForCountry("us")).toBe("+1");
+    expect(callingCodeForCountry("fr")).toBe("+33");
+    expect(callingCodeForCountry("de")).toBe("+49");
+    expect(callingCodeForCountry("ae")).toBe("+971");
+    for (const country of LAUNCH_COUNTRIES) {
+      expect(callingCodeForCountry(country.iso2)).toMatch(/^\+\d{1,4}$/);
+    }
+  });
+
+  it("keeps the current page when switching country", () => {
+    expect(pathForCountry("/join", "fr")).toBe("/join");
+    expect(pathForCountry("/gb/plumbers/london", "fr")).toBe("/fr/plumbers/london");
+    expect(pathForCountry("/", "fr")).toBe("/");
   });
 });
 

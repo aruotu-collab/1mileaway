@@ -1,5 +1,6 @@
 import { CALL_OUTCOME } from "@/lib/feedback";
 import { siteActivitySnapshot, type SiteActivitySnapshot } from "@/lib/activity";
+import { CLAIM_COMPLETED } from "@/lib/admin/conversions";
 import { CLAIM_STATUS, PAYMENT_STATES } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { startOfLocalDay } from "@/lib/utils";
@@ -19,7 +20,7 @@ export function claimLabel(status: string) {
 
 export type AdminFeedItem = {
   at: Date;
-  kind: "call" | "ask" | "review" | "payment" | "email" | "audit";
+  kind: "call" | "ask" | "review" | "payment" | "email" | "audit" | "contact" | "claim";
   title: string;
   detail: string;
 };
@@ -30,6 +31,8 @@ export type AdminOverview = {
   answeredToday: number;
   noAnswerToday: number;
   emailsToday: number;
+  openContacts: number;
+  claimsToday: number;
   feed: AdminFeedItem[];
 };
 
@@ -42,12 +45,16 @@ export async function adminOverview(): Promise<AdminOverview> {
     answeredToday,
     noAnswerToday,
     emailsToday,
+    openContacts,
     calls,
     asks,
     reviews,
     payments,
     emails,
     audit,
+    contacts,
+    claimsToday,
+    recentClaims,
   ] = await Promise.all([
     prisma.business.count({
       where: { deletedAt: null, paymentState: PAYMENT_STATES.SUBSCRIPTION_ACTIVE },
@@ -55,6 +62,7 @@ export async function adminOverview(): Promise<AdminOverview> {
     prisma.call.count({ where: { startedAt: { gte: dayStart }, status: CALL_OUTCOME.ANSWERED } }),
     prisma.call.count({ where: { startedAt: { gte: dayStart }, status: CALL_OUTCOME.NO_ANSWER } }),
     prisma.emailMessage.count({ where: { createdAt: { gte: dayStart } } }),
+    prisma.contactThread.count({ where: { status: "open" } }),
     prisma.call.findMany({
       include: { business: true, review: true },
       orderBy: { startedAt: "desc" },
@@ -85,7 +93,26 @@ export async function adminOverview(): Promise<AdminOverview> {
       orderBy: { createdAt: "desc" },
       take: 8,
     }),
+    prisma.contactThread.findMany({
+      orderBy: { updatedAt: "desc" },
+      take: 8,
+    }),
+    prisma.auditLog.count({
+      where: { action: CLAIM_COMPLETED, createdAt: { gte: dayStart } },
+    }),
+    prisma.auditLog.findMany({
+      where: { action: CLAIM_COMPLETED },
+      include: { actor: true },
+      orderBy: { createdAt: "desc" },
+      take: 8,
+    }),
   ]);
+
+  const claimedBusinesses = await prisma.business.findMany({
+    where: { id: { in: recentClaims.map((log) => log.entityId).filter((id): id is string => Boolean(id)) } },
+    select: { id: true, name: true },
+  });
+  const claimedName = new Map(claimedBusinesses.map((row) => [row.id, row.name]));
 
   const feed: AdminFeedItem[] = [
     ...calls.map((call) => ({
@@ -98,10 +125,7 @@ export async function adminOverview(): Promise<AdminOverview> {
       at: ask.createdAt,
       kind: "ask" as const,
       title: `Ask · ${ask.business.name}`,
-      detail:
-        ask.business.claimStatus === CLAIM_STATUS.UNCLAIMED
-          ? `Could not get through · ${ask.location?.name ?? "no area"}`
-          : `Asked, no Call now · ${ask.location?.name ?? "no area"}`,
+      detail: `Asked to take a job · ${ask.location?.name ?? "no area"}`,
     })),
     ...reviews.map((review) => ({
       at: review.createdAt,
@@ -123,13 +147,25 @@ export async function adminOverview(): Promise<AdminOverview> {
       title: email.subject,
       detail: `${email.toEmail} · ${email.template} · ${email.status}`,
     })),
+    ...recentClaims.map((log) => ({
+      at: log.createdAt,
+      kind: "claim" as const,
+      title: `Claimed · ${log.entityId ? claimedName.get(log.entityId) ?? "listing" : "listing"}`,
+      detail: `Unclaimed → claimed${log.actor?.email ? ` · ${log.actor.email}` : ""}`,
+    })),
     ...audit
-      .filter((log) => log.action !== "auth.login")
+      .filter((log) => log.action !== "auth.login" && log.action !== CLAIM_COMPLETED)
       .map((log) => ({
       at: log.createdAt,
       kind: "audit" as const,
       title: log.action,
       detail: `${log.entityType}${log.actor?.email ? ` · ${log.actor.email}` : " · system"}`,
+    })),
+    ...contacts.map((thread) => ({
+      at: thread.updatedAt,
+      kind: "contact" as const,
+      title: `Contact · ${thread.subject}`,
+      detail: `${thread.name} · ${thread.email} · ${thread.status}`,
     })),
   ]
     .sort((a, b) => b.at.getTime() - a.at.getTime())
@@ -141,6 +177,8 @@ export async function adminOverview(): Promise<AdminOverview> {
     answeredToday,
     noAnswerToday,
     emailsToday,
+    openContacts,
+    claimsToday,
     feed,
   };
 }

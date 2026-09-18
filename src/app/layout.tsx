@@ -3,6 +3,7 @@ import { Newsreader, Outfit } from "next/font/google";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { LiveActivityTape } from "@/components/live-activity-tape";
+import { NavigationProgress } from "@/components/navigation-progress";
 import { GoogleAnalytics } from "@/components/google-analytics";
 import { APP_URL } from "@/lib/constants";
 import { getRequestUi } from "@/lib/countries/request";
@@ -37,9 +38,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     <html lang={ui.htmlLang} dir={ui.dir} className={`${outfit.variable} ${newsreader.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <GoogleAnalytics />
+        <NavigationProgress />
         <div className="sticky top-0 z-40">
-          <SiteHeader />
           <LiveActivityTape />
+          <SiteHeader />
         </div>
         <div className="flex-1">{children}</div>
         <SiteFooter />

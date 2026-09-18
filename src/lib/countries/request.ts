@@ -26,9 +26,12 @@ export const getRequestUi = cache(async () => {
   const country = await getRequestCountry();
   const hdrs = await headers();
   const language = languageForCountry(country, hdrs.get("accept-language"));
+  const rawPath = hdrs.get("x-pathname") ?? hdrs.get("next-url") ?? "/";
+  const pathname = rawPath.startsWith("/") && !rawPath.startsWith("//") ? rawPath : "/";
   return {
     country,
     language,
+    pathname,
     copy: uiCopy(language),
     htmlLang: language === "fr" && country.iso2 === "ca" ? "fr-CA" : country.htmlLang,
     dir: language === "ar" ? "rtl" : country.dir,

@@ -1,4 +1,5 @@
 import { requestProfileClaim } from "@/app/actions/claim";
+import { SubmitButton } from "@/components/submit-button";
 import { maskEmail } from "@/lib/utils";
 import { unclaimedDemandCopy } from "@/lib/listing-insights";
 
@@ -62,9 +63,7 @@ export function ClaimListingCta({
             />
           </label>
         )}
-        <button className="btn btn-primary" type="submit">
-          Claim this listing free
-        </button>
+        <SubmitButton pendingLabel="Sending claim link…">Claim this listing free</SubmitButton>
       </form>
     </section>
   );

@@ -1,7 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
+import { setAppPending } from "@/lib/pending-ui";
 
 export function PushForm({
   action,
@@ -13,8 +14,14 @@ export function PushForm({
   children: ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPending(false);
+    setAppPending(false);
+  }, [pathname]);
 
   return (
     <form
@@ -25,25 +32,36 @@ export function PushForm({
         const formData = new FormData(event.currentTarget);
         setError(null);
         setPending(true);
+        setAppPending(true);
         void (async () => {
           try {
             const result = await action(formData);
             if (result && "error" in result && result.error) {
               setError(result.error);
+              setPending(false);
+              setAppPending(false);
               return;
             }
             if (result && "href" in result && result.href) {
               router.push(result.href);
+              return;
             }
+            setPending(false);
+            setAppPending(false);
           } catch {
             setError("That did not work. Try again.");
-          } finally {
             setPending(false);
+            setAppPending(false);
           }
         })();
       }}
     >
       <div className={pending ? "pointer-events-none opacity-70" : undefined}>{children}</div>
+      {pending ? (
+        <p className="mt-2 text-sm text-ink-soft" aria-live="polite">
+          Please wait…
+        </p>
+      ) : null}
       {error ? <p className="mt-2 text-sm text-rust">{error}</p> : null}
     </form>
   );

@@ -1,5 +1,5 @@
 import { requestMagicLink } from "@/app/actions/auth";
-import { BackLink } from "@/components/back-link";
+import { SubmitButton } from "@/components/submit-button";
 import { prisma } from "@/lib/db";
 
 export default async function LoginPage({
@@ -65,9 +65,9 @@ export default async function LoginPage({
           />
         </label>
         <input type="hidden" name="next" value={next} />
-        <button className="btn btn-primary" type="submit">
+        <SubmitButton pendingLabel="Sending link…">
           {resendConfigured ? "Email me a link" : "Create a local sign-in link"}
-        </button>
+        </SubmitButton>
       </form>
       <p className="mt-6 text-sm text-ink-soft">
         Demo professionals: kira@demo.1mileaway.com, lee@demo.1mileaway.com, pat@demo.1mileaway.com.

@@ -5,6 +5,7 @@ import type { LaunchCountry } from "@/lib/countries/catalog";
 
 export function CountryPicker({
   current,
+  nextPath,
   liveIso2,
   label,
   liveBadge,
@@ -12,6 +13,7 @@ export function CountryPicker({
   countries,
 }: {
   current: string;
+  nextPath: string;
   liveIso2: string[];
   label: string;
   liveBadge: string;
@@ -20,6 +22,7 @@ export function CountryPicker({
 }) {
   return (
     <form action={setVisitorCountry} className="shrink-0">
+      <input type="hidden" name="next" value={nextPath} />
       <label className="sr-only" htmlFor="country-picker">
         {label}
       </label>
@@ -27,6 +30,7 @@ export function CountryPicker({
         id="country-picker"
         name="country"
         defaultValue={current}
+        key={current}
         className="max-w-[9.5rem] rounded-full border border-line bg-paper px-2 py-1.5 text-xs font-medium text-ink sm:max-w-[12rem] sm:text-sm"
         onChange={(event) => event.currentTarget.form?.requestSubmit()}
       >

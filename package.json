@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "prisma migrate deploy && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
     "db:seed": "tsx prisma/seed.ts",
+    "listings:import": "tsx scripts/import-listings.ts",
     "db:migrate": "prisma migrate dev",
     "postinstall": "prisma generate"
   },
@@ -17,6 +18,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.16.3",
+    "exceljs": "^4.4.0",
     "next": "16.3.5",
     "react": "19.2.8",
     "react-dom": "19.2.8",

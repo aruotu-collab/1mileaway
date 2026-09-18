@@ -1,6 +1,7 @@
 import { CLAIM_STATUS, PAYMENT_STATES } from "@/lib/constants";
+import type { UiLanguage } from "@/lib/countries/catalog";
 import { prisma } from "@/lib/db";
-import { publicCallPhone } from "@/lib/phone";
+import { countLine, fillTape, tapeCopy, type TapeCopy } from "@/lib/i18n/tape";
 import { minutesAgo, startOfLocalDay } from "@/lib/utils";
 
 export type ActivitySnapshot = {
@@ -15,8 +16,8 @@ export type ActivitySnapshot = {
   locationName: string;
 };
 
-function countLabel(count: number, one: string, many: string) {
-  return `${count} ${count === 1 ? one : many}`;
+function copyFor(language: UiLanguage = "en") {
+  return tapeCopy(language);
 }
 
 export type TradeClaimCounts = {
@@ -48,31 +49,30 @@ export type SiteActivitySnapshot = {
   trades: TradeClaimCounts[];
 };
 
-export function activityHeadlines(snap: ActivitySnapshot) {
+export function activityHeadlines(snap: ActivitySnapshot, language: UiLanguage = "en") {
+  const copy = copyFor(language);
   const trade = snap.professionPlural.toLowerCase();
   const one = snap.professionName.toLowerCase();
   const area = snap.locationName;
   const lines: string[] = [];
 
   if (snap.callsLastHour > 0) {
-    lines.push(countLabel(snap.callsLastHour, "customer is ringing a tradesman now", "customers are ringing tradesmen now"));
+    lines.push(countLine(snap.callsLastHour, copy.ringingOne, copy.ringingMany));
   }
   if (snap.callsTodayLocal > 0) {
-    lines.push(
-      countLabel(snap.callsTodayLocal, `Call now tap in ${area} today`, `Call now taps in ${area} today`),
-    );
+    lines.push(countLine(snap.callsTodayLocal, copy.tapsInAreaOne, copy.tapsInAreaMany, { area }));
   }
   if (snap.callsTodaySite > 0 && snap.callsTodaySite !== snap.callsTodayLocal) {
-    lines.push(countLabel(snap.callsTodaySite, "Call now tap on 1mileaway today", "Call now taps on 1mileaway today"));
+    lines.push(countLine(snap.callsTodaySite, copy.tapsTodayOne, copy.tapsTodayMany));
   }
   if (snap.asksToday > 0) {
-    lines.push(countLabel(snap.asksToday, "tradesman was asked to take a job today", "tradesmen were asked to take a job today"));
+    lines.push(countLine(snap.asksToday, copy.askedJobOne, copy.askedJobMany));
   }
   if (snap.availableNow > 0) {
-    lines.push(countLabel(snap.availableNow, `${one} recently available in ${area}`, `${trade} recently available in ${area}`));
+    lines.push(countLine(snap.availableNow, copy.availableInAreaOne, copy.availableInAreaMany, { one, trade, area }));
   }
   if (snap.listingCount > 0) {
-    lines.push(`${snap.listingCount} ${trade} serve ${area}`);
+    lines.push(fillTape(copy.serveArea, { n: snap.listingCount, trade, area }));
   }
 
   return lines;
@@ -125,108 +125,119 @@ export async function activitySnapshot(input: {
   };
 }
 
-function claimedLabel(count: number) {
-  return countLabel(count, "claimed listing", "claimed listings");
+function claimedLabel(count: number, copy: TapeCopy) {
+  return countLine(count, copy.claimedOne, copy.claimedMany);
 }
 
-function unclaimedLabel(count: number) {
-  return countLabel(count, "listing not yet claimed", "listings not yet claimed");
+function unclaimedLabel(count: number, copy: TapeCopy) {
+  return countLine(count, copy.unclaimedListingOne, copy.unclaimedListingMany);
 }
 
-export function tradeClaimHeadline(trade: TradeClaimCounts) {
+export function tradeClaimHeadline(trade: TradeClaimCounts, language: UiLanguage = "en") {
+  const copy = copyFor(language);
   const listed = trade.claimed + trade.unclaimed;
   const word = (count: number) => (count === 1 ? trade.name : trade.plural).toLowerCase();
   if (trade.claimed > 0 && trade.unclaimed > 0) {
-    return `${trade.claimed} claimed ${word(trade.claimed)} · ${trade.unclaimed} not yet claimed`;
+    return fillTape(copy.tradeClaimedBoth, {
+      claimed: trade.claimed,
+      word: word(trade.claimed),
+      unclaimed: trade.unclaimed,
+    });
   }
   if (trade.claimed === 0 && trade.unclaimed > 0) {
-    return `${trade.unclaimed} ${word(listed)} listed — none claimed yet, so Call now is off`;
+    return fillTape(copy.tradeUnclaimed, { n: trade.unclaimed, word: word(listed) });
   }
   if (trade.claimed > 0) {
-    return `${trade.claimed} claimed ${word(trade.claimed)} with Call now on`;
+    return fillTape(copy.tradeClaimedOn, { n: trade.claimed, word: word(trade.claimed) });
   }
   return null;
 }
 
-function recentCallHeadline(lastCallAt: Date | null) {
+function recentCallHeadline(lastCallAt: Date | null, copy: TapeCopy) {
   const mins = minutesAgo(lastCallAt);
   if (mins == null) return null;
-  if (mins <= 1) return "A customer tapped Call now just now";
-  if (mins < 60) return `Most recent Call now tap was ${mins} minutes ago`;
+  if (mins <= 1) return copy.callNowJustNow;
+  if (mins < 60) return fillTape(copy.callNowMinutes, { n: mins });
   const hours = Math.round(mins / 60);
-  if (hours < 24) return `Most recent Call now tap was ${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+  if (hours < 24) return countLine(hours, copy.callNowHour, copy.callNowHours);
   return null;
 }
 
-export function siteActivityHeadlines(snap: SiteActivitySnapshot) {
+export function siteActivityHeadlines(snap: SiteActivitySnapshot, language: UiLanguage = "en") {
+  const copy = copyFor(language);
   const lines: string[] = [];
   if (snap.callsLastHour > 0) {
-    lines.push(countLabel(snap.callsLastHour, "customer is ringing a tradesman now", "customers are ringing tradesmen now"));
+    lines.push(countLine(snap.callsLastHour, copy.ringingOne, copy.ringingMany));
   }
-  const recent = recentCallHeadline(snap.lastCallAt);
+  const recent = recentCallHeadline(snap.lastCallAt, copy);
   if (recent) lines.push(recent);
   if (snap.callsToday > 0) {
-    lines.push(countLabel(snap.callsToday, "Call now tap on 1mileaway today", "Call now taps on 1mileaway today"));
+    lines.push(countLine(snap.callsToday, copy.tapsTodayOne, copy.tapsTodayMany));
   }
   if (snap.callsAllTime > 0 && snap.callsAllTime !== snap.callsToday) {
-    lines.push(`${snap.callsAllTime} Call now taps through the web app so far`);
+    lines.push(fillTape(copy.tapsAllTime, { n: snap.callsAllTime }));
   }
   if (snap.unclaimedAsksToday > 0) {
-    lines.push(
-      countLabel(
-        snap.unclaimedAsksToday,
-        "customer asked an unclaimed listing today — they could not get through",
-        "customers asked unclaimed listings today — they could not get through",
-      ),
-    );
+    lines.push(countLine(snap.unclaimedAsksToday, copy.unclaimedAskTodayOne, copy.unclaimedAskTodayMany));
   } else if (snap.asksToday > 0) {
-    lines.push(countLabel(snap.asksToday, "tradesman was asked to take a job today", "tradesmen were asked to take a job today"));
+    lines.push(countLine(snap.asksToday, copy.askedJobOne, copy.askedJobMany));
   }
   if (snap.unclaimedAsksAllTime > 0 && snap.unclaimedAsksAllTime !== snap.unclaimedAsksToday) {
-    lines.push(
-      `${snap.unclaimedAsksAllTime} customers have asked unclaimed listings and could not tap Call now`,
-    );
+    lines.push(fillTape(copy.unclaimedAskAllTime, { n: snap.unclaimedAsksAllTime }));
   }
   if (snap.availableNow > 0) {
-    lines.push(countLabel(snap.availableNow, "professional recently available", "professionals recently available"));
+    lines.push(countLine(snap.availableNow, copy.availableOne, copy.availableMany));
   }
   if (snap.callNowOnCount > 0) {
-    lines.push(countLabel(snap.callNowOnCount, "listing has Call now on", "listings have Call now on"));
+    lines.push(countLine(snap.callNowOnCount, copy.callNowOnOne, copy.callNowOnMany));
   }
   if (snap.claimedCount > 0 || snap.unclaimedCount > 0) {
-    lines.push(`${claimedLabel(snap.claimedCount)} · ${unclaimedLabel(snap.unclaimedCount)}`);
+    lines.push(`${claimedLabel(snap.claimedCount, copy)} · ${unclaimedLabel(snap.unclaimedCount, copy)}`);
   } else if (snap.listingCount > 0) {
-    lines.push(`${snap.listingCount} professionals listed on 1mileaway`);
+    lines.push(fillTape(copy.listedCount, { n: snap.listingCount }));
   }
   if (snap.unclaimedCount > 0) {
-    lines.push("Unclaimed listings are in search, but Call now stays off until they are claimed");
+    lines.push(snap.unclaimedAsksAllTime > 0 ? copy.unclaimedBeingAsked : copy.unclaimedCanAsk);
   }
   if (snap.listedThisWeek > 0) {
-    lines.push(countLabel(snap.listedThisWeek, "new listing this week", "new listings this week"));
+    lines.push(countLine(snap.listedThisWeek, copy.newListingOne, copy.newListingMany));
   }
   if (snap.verifiedCount > 0) {
-    lines.push(countLabel(snap.verifiedCount, "verified professional", "verified professionals"));
+    lines.push(countLine(snap.verifiedCount, copy.verifiedOne, copy.verifiedMany));
   }
   if (snap.trialCount > 0) {
-    lines.push(`${snap.trialCount} ${snap.trialCount === 1 ? "listing is" : "listings are"} on a two-month free trial`);
+    lines.push(countLine(snap.trialCount, copy.trialOne, copy.trialMany));
   }
   if (snap.reviewCount > 0) {
-    lines.push(countLabel(snap.reviewCount, "review from a real 1mileaway call", "reviews from real 1mileaway calls"));
+    lines.push(countLine(snap.reviewCount, copy.reviewOne, copy.reviewMany));
   }
   for (const trade of snap.trades) {
-    const line = tradeClaimHeadline(trade);
+    const line = tradeClaimHeadline(trade, language);
     if (line) lines.push(line);
   }
   if (snap.professionCount > 0) {
-    lines.push(`${snap.professionCount} types of help nearby`);
+    lines.push(fillTape(copy.helpTypes, { n: snap.professionCount }));
   }
   if (snap.areaCount > 0) {
-    lines.push(`${snap.areaCount} areas you can search`);
+    lines.push(fillTape(copy.areas, { n: snap.areaCount }));
   }
   return lines;
 }
 
+type CachedSnapshot = { at: number; value: SiteActivitySnapshot };
+const snapshotCache: { current: CachedSnapshot | null } = { current: null };
+const SNAPSHOT_TTL_MS = 30_000;
+
 export async function siteActivitySnapshot(): Promise<SiteActivitySnapshot> {
+  if (snapshotCache.current && Date.now() - snapshotCache.current.at < SNAPSHOT_TTL_MS) {
+    return snapshotCache.current.value;
+  }
+  const value = await loadSiteActivitySnapshot();
+  snapshotCache.current = { at: Date.now(), value };
+  return value;
+}
+
+async function loadSiteActivitySnapshot(): Promise<SiteActivitySnapshot> {
   const country = await prisma.country.findFirst({
     where: { active: true },
     orderBy: { tier: "asc" },
@@ -237,6 +248,7 @@ export async function siteActivitySnapshot(): Promise<SiteActivitySnapshot> {
   const dayStart = startOfLocalDay(timezone);
   const hourStart = new Date(Date.now() - 60 * 60 * 1000);
   const now = new Date();
+  const weekStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const listed = {
     deletedAt: null,
     claimStatus: { not: CLAIM_STATUS.SUSPENDED },
@@ -244,21 +256,55 @@ export async function siteActivitySnapshot(): Promise<SiteActivitySnapshot> {
   };
   const inCountry = countryId ? { business: { countryId } } : {};
 
-  const [
-    callsLastHour,
-    callsToday,
-    callsAllTime,
-    lastCall,
-    asksToday,
-    unclaimedAsksToday,
-    unclaimedAsksAllTime,
-    availableNow,
-    areaCount,
-    professionCount,
-    reviewCount,
-    businesses,
-    slugs,
-  ] = await Promise.all([
+  const countryFilter = countryId ?? null;
+  const [listingStats, tradeStats, slugs] = await Promise.all([
+    prisma.$queryRaw<
+      Array<{
+        listings: number;
+        unclaimed: number;
+        claimed: number;
+        verified: number;
+        listed_week: number;
+        trial: number;
+        call_now: number;
+      }>
+    >`
+      SELECT
+        COUNT(*)::int AS listings,
+        COUNT(*) FILTER (WHERE "claimStatus" = ${CLAIM_STATUS.UNCLAIMED})::int AS unclaimed,
+        COUNT(*) FILTER (WHERE "claimStatus" IN (${CLAIM_STATUS.CLAIMED}, ${CLAIM_STATUS.VERIFIED}))::int AS claimed,
+        COUNT(*) FILTER (WHERE "claimStatus" = ${CLAIM_STATUS.VERIFIED})::int AS verified,
+        COUNT(*) FILTER (WHERE "createdAt" >= ${weekStart})::int AS listed_week,
+        COUNT(*) FILTER (WHERE "paymentState" IN (${PAYMENT_STATES.FREE_TRIAL_ACTIVE}, ${PAYMENT_STATES.SUBSCRIPTION_TRIALING}))::int AS trial,
+        COUNT(*) FILTER (
+          WHERE "claimStatus" IN (${CLAIM_STATUS.CLAIMED}, ${CLAIM_STATUS.VERIFIED})
+            AND "phoneReal" IS NOT NULL
+            AND "paymentState" IN (${PAYMENT_STATES.SUBSCRIPTION_ACTIVE}, ${PAYMENT_STATES.SUBSCRIPTION_TRIALING})
+        )::int AS call_now
+      FROM "Business"
+      WHERE "deletedAt" IS NULL
+        AND "claimStatus" <> ${CLAIM_STATUS.SUSPENDED}
+        AND (${countryFilter}::text IS NULL OR "countryId" = ${countryFilter})
+    `,
+    prisma.$queryRaw<Array<{ professionId: string; unclaimed: number; claimed: number }>>`
+      SELECT
+        bp."professionId",
+        COUNT(*) FILTER (WHERE b."claimStatus" = ${CLAIM_STATUS.UNCLAIMED})::int AS unclaimed,
+        COUNT(*) FILTER (WHERE b."claimStatus" IN (${CLAIM_STATUS.CLAIMED}, ${CLAIM_STATUS.VERIFIED}))::int AS claimed
+      FROM "BusinessProfession" bp
+      JOIN "Business" b ON b.id = bp."businessId"
+      WHERE b."deletedAt" IS NULL
+        AND b."claimStatus" <> ${CLAIM_STATUS.SUSPENDED}
+        AND (${countryFilter}::text IS NULL OR b."countryId" = ${countryFilter})
+      GROUP BY bp."professionId"
+    `,
+    prisma.professionSlug.findMany({
+      where: { ...(countryId ? { countryId } : {}), profession: { active: true } },
+      select: { professionId: true, name: true, pluralName: true },
+    }),
+  ]);
+
+  const [callsLastHour, callsToday, callsAllTime, lastCall] = await Promise.all([
     prisma.call.count({ where: { startedAt: { gte: hourStart }, ...inCountry } }),
     prisma.call.count({ where: { startedAt: { gte: dayStart }, ...inCountry } }),
     prisma.call.count({ where: inCountry }),
@@ -267,6 +313,9 @@ export async function siteActivitySnapshot(): Promise<SiteActivitySnapshot> {
       orderBy: { startedAt: "desc" },
       select: { startedAt: true },
     }),
+  ]);
+
+  const [asksToday, unclaimedAsksToday, unclaimedAsksAllTime, availableNow, areaCount, reviewCount] = await Promise.all([
     prisma.lead.count({
       where: { createdAt: { gte: dayStart }, callId: null, ...(countryId ? { countryId } : {}) },
     }),
@@ -293,73 +342,28 @@ export async function siteActivitySnapshot(): Promise<SiteActivitySnapshot> {
     prisma.location.count({
       where: { active: true, type: { in: ["district", "city"] }, ...(countryId ? { countryId } : {}) },
     }),
-    prisma.professionSlug.count({
-      where: { ...(countryId ? { countryId } : {}), profession: { active: true } },
-    }),
     prisma.review.count({
       where: { published: true, ...(countryId ? { business: { countryId } } : {}) },
     }),
-    prisma.business.findMany({
-      where: listed,
-      select: {
-        claimStatus: true,
-        paymentState: true,
-        phoneReal: true,
-        createdAt: true,
-        professions: { select: { professionId: true } },
-        subscription: { select: { currentPeriodEnd: true } },
-      },
-    }),
-    prisma.professionSlug.findMany({
-      where: { ...(countryId ? { countryId } : {}), profession: { active: true } },
-      select: { professionId: true, name: true, pluralName: true },
-    }),
   ]);
 
+  const stats = listingStats[0] ?? {
+    listings: 0,
+    unclaimed: 0,
+    claimed: 0,
+    verified: 0,
+    listed_week: 0,
+    trial: 0,
+    call_now: 0,
+  };
   const names = new Map(slugs.map((row) => [row.professionId, { name: row.name, plural: row.pluralName }]));
-  const byTrade = new Map<string, TradeClaimCounts>();
-  let claimedCount = 0;
-  let unclaimedCount = 0;
-  let callNowOnCount = 0;
-  let verifiedCount = 0;
-  let trialCount = 0;
-  let listedThisWeek = 0;
-  const weekStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-
-  for (const business of businesses) {
-    const claimed =
-      business.claimStatus === CLAIM_STATUS.CLAIMED || business.claimStatus === CLAIM_STATUS.VERIFIED;
-    if (business.claimStatus === CLAIM_STATUS.UNCLAIMED) unclaimedCount += 1;
-    else if (claimed) claimedCount += 1;
-    if (business.claimStatus === CLAIM_STATUS.VERIFIED) verifiedCount += 1;
-    if (business.createdAt >= weekStart) listedThisWeek += 1;
-    if (
-      publicCallPhone({
-        claimStatus: business.claimStatus,
-        paymentState: business.paymentState,
-        phoneReal: business.phoneReal,
-        currentPeriodEnd: business.subscription?.currentPeriodEnd,
-      })
-    ) {
-      callNowOnCount += 1;
-    }
-    if (
-      business.paymentState === PAYMENT_STATES.FREE_TRIAL_ACTIVE ||
-      business.paymentState === PAYMENT_STATES.SUBSCRIPTION_TRIALING
-    ) {
-      trialCount += 1;
-    }
-    for (const row of business.professions) {
+  const trades = tradeStats
+    .map((row) => {
       const labels = names.get(row.professionId);
-      if (!labels) continue;
-      const current = byTrade.get(row.professionId) ?? { ...labels, claimed: 0, unclaimed: 0 };
-      if (business.claimStatus === CLAIM_STATUS.UNCLAIMED) current.unclaimed += 1;
-      else if (claimed) current.claimed += 1;
-      byTrade.set(row.professionId, current);
-    }
-  }
-
-  const trades = [...byTrade.values()]
+      if (!labels) return null;
+      return { ...labels, claimed: row.claimed, unclaimed: row.unclaimed };
+    })
+    .filter((row): row is TradeClaimCounts => Boolean(row))
     .filter((row) => row.claimed + row.unclaimed > 0)
     .sort((a, b) => b.unclaimed - a.unclaimed || b.claimed - a.claimed || a.plural.localeCompare(b.plural));
 
@@ -372,16 +376,16 @@ export async function siteActivitySnapshot(): Promise<SiteActivitySnapshot> {
     unclaimedAsksToday,
     unclaimedAsksAllTime,
     availableNow,
-    listingCount: businesses.length,
-    claimedCount,
-    unclaimedCount,
-    callNowOnCount,
-    verifiedCount,
-    trialCount,
-    listedThisWeek,
+    listingCount: stats.listings,
+    claimedCount: stats.claimed,
+    unclaimedCount: stats.unclaimed,
+    callNowOnCount: stats.call_now,
+    verifiedCount: stats.verified,
+    trialCount: stats.trial,
+    listedThisWeek: stats.listed_week,
     reviewCount,
     areaCount,
-    professionCount,
+    professionCount: slugs.length,
     trades,
   };
 }
