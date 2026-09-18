@@ -3,11 +3,11 @@ import { prisma } from "@/lib/db";
 import { SESSION_COOKIE, SESSION_DAYS } from "@/lib/constants";
 import { upsertProfile } from "@/lib/auth/session";
 import { writeAudit } from "@/lib/admin/audit";
-import { hashToken, randomToken } from "@/lib/utils";
+import { hashToken, randomToken, safeNextPath } from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get("token");
-  const next = request.nextUrl.searchParams.get("next") ?? "/professional";
+  const next = safeNextPath(request.nextUrl.searchParams.get("next"));
   if (!token) {
     return NextResponse.redirect(new URL("/login?error=expired", request.url));
   }

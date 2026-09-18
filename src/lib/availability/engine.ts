@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/db";
-import { AVAILABILITY, AVAILABLE_NOW_HOURS, PAYMENT_STATES, type AvailabilityStatus } from "@/lib/constants";
+import { AVAILABILITY, AVAILABLE_NOW_HOURS, type AvailabilityStatus } from "@/lib/constants";
 import { endOfLocalDay, formatFreshness } from "@/lib/utils";
 import { writeAudit } from "@/lib/admin/audit";
+import { isSubscriptionActive } from "@/lib/subscription";
 
 export function isAvailabilityLive(
   status: string,
@@ -52,14 +53,14 @@ export async function setAvailability(input: {
 }) {
   const business = await prisma.business.findUnique({
     where: { id: input.businessId },
-    include: { country: true },
+    include: { country: true, subscription: true },
   });
   if (!business) throw new Error("Business not found");
 
   let status = input.status;
   if (
-    business.paymentState === PAYMENT_STATES.OUTSTANDING_LEAD ||
-    business.paymentState === PAYMENT_STATES.SUSPENDED
+    !isSubscriptionActive(business.paymentState, business.subscription?.currentPeriodEnd) ||
+    business.claimStatus === "SUSPENDED"
   ) {
     if (status === AVAILABILITY.AVAILABLE_NOW) {
       status = AVAILABILITY.UNKNOWN;

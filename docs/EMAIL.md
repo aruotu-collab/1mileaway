@@ -4,4 +4,6 @@ Resend is the production adapter. Without `RESEND_API_KEY`, messages are stored 
 
 Verified sending domain: `1mileaway.com`. Set `RESEND_FROM_EMAIL` to `1mileaway <hello@1mileaway.com>`.
 
-Templates: magic link, inbound call, qualified lead, trust-lead payment request, payment settled, availability follow-up.
+Templates: magic link, claim invite, trial started, inbound call (with running call count), mid-trial check-in, trial ending, trial ended analysis, subscribe-from-demand, subscription started, availability follow-up.
+
+Cron `/api/cron/subscriptions` sends the mid-trial and ending analysis, then ends expired trials.

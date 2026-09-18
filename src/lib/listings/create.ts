@@ -1,11 +1,13 @@
 import { prisma } from "@/lib/db";
 import { slugify } from "@/lib/utils";
 import { OUTREACH } from "@/lib/constants";
+import { uniqueProfessionIds } from "@/lib/professions";
 
 export type CreateUnclaimedInput = {
   name: string;
   email?: string | null;
-  professionId: string;
+  professionId?: string;
+  professionIds?: string[];
   locationId: string;
   website?: string | null;
   phone?: string | null;
@@ -35,12 +37,19 @@ export async function findDuplicateListing(input: { name: string; email?: string
   return { business, reason: "name" as const };
 }
 
+function professionIdsFor(input: CreateUnclaimedInput) {
+  const ids = uniqueProfessionIds([...(input.professionIds ?? []), ...(input.professionId ? [input.professionId] : [])]);
+  if (!ids.length) throw new Error("Need a profession");
+  return ids;
+}
+
 export async function createUnclaimedListingRecord(input: CreateUnclaimedInput) {
   const location = await prisma.location.findUnique({ where: { id: input.locationId } });
   if (!location) throw new Error("Unknown location");
   const email = input.email?.trim().toLowerCase() || null;
   const duplicate = await findDuplicateListing({ name: input.name, email, locationId: input.locationId });
   if (duplicate) return { ...duplicate, created: false as const };
+  const professionIds = professionIdsFor(input);
 
   const business = await prisma.business.create({
     data: {
@@ -55,7 +64,7 @@ export async function createUnclaimedListingRecord(input: CreateUnclaimedInput) 
       website: input.website || null,
       phoneDisplay: input.phone || input.phoneReal || null,
       about: input.about || null,
-      professions: { create: { professionId: input.professionId } },
+      professions: { create: professionIds.map((professionId) => ({ professionId })) },
       locations: { create: { locationId: input.locationId, radiusMiles: 3 } },
       availability: { create: { status: "UNKNOWN", source: input.availabilitySource ?? "import" } },
       phoneReal: input.phoneReal || null,

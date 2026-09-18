@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { goToMarketplace, labelForCoordinates } from "@/app/actions/search";
+import { LocationField } from "@/components/location-field";
 import { UrgencyTabs } from "@/components/urgency-tabs";
+import type { LocationChoice } from "@/lib/locations/suggest";
+import { groupedProfessions, type ProfessionChoice } from "@/lib/professions";
 
 export function SearchBox({
   country = "gb",
@@ -10,12 +13,16 @@ export function SearchBox({
   defaultLocation = "",
   emergency = false,
   showUrgencyTabs = false,
+  professions = [],
+  locations = [],
 }: {
   country?: string;
   defaultProfession?: string;
   defaultLocation?: string;
   emergency?: boolean;
   showUrgencyTabs?: boolean;
+  professions?: ProfessionChoice[];
+  locations?: LocationChoice[];
 }) {
   const [location, setLocation] = useState(defaultLocation);
   const [lat, setLat] = useState("");
@@ -27,6 +34,7 @@ export function SearchBox({
     setLocation(value);
     setLat("");
     setLng("");
+    setGeoStatus(null);
   }
 
   async function useCurrentLocation() {
@@ -57,28 +65,44 @@ export function SearchBox({
       {showUrgencyTabs ? (
         <UrgencyTabs emergency={isEmergency} onChange={setIsEmergency} />
       ) : null}
-      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-start">
         <label className="block">
           <span className="mb-1 block text-sm font-medium">What do you need?</span>
-          <input
+          <select
             className="w-full rounded-2xl border border-line bg-paper px-4 py-3"
             name="profession"
-            defaultValue={defaultProfession}
-            placeholder="Plumber, locksmith…"
-          />
+            defaultValue={
+              professions.find((profession) => profession.slug === defaultProfession)?.slug ??
+              professions[0]?.slug ??
+              "plumbers"
+            }
+            required
+          >
+            {groupedProfessions(professions).map((group) => (
+              <optgroup key={group.name} label={group.name}>
+                {group.items.map((profession) => (
+                  <option key={profession.slug} value={profession.slug}>
+                    {profession.label}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
         </label>
-        <label className="block">
-          <span className="mb-1 block text-sm font-medium">Where do you need it?</span>
-          <input
-            className="w-full rounded-2xl border border-line bg-paper px-4 py-3"
-            name="location"
+        <div className="block">
+          <label htmlFor="where-needed" className="mb-1 block text-sm font-medium">
+            Where do you need it?
+          </label>
+          <LocationField
+            id="where-needed"
             value={location}
-            onChange={(event) => onLocationChange(event.target.value)}
-            placeholder="Postcode, area or full address"
-            autoComplete="street-address"
+            locations={locations}
+            onChange={onLocationChange}
+            onUseCurrentLocation={useCurrentLocation}
+            geoStatus={geoStatus}
           />
-        </label>
-        <div className="flex items-end">
+        </div>
+        <div className="flex sm:pt-7">
           <input type="hidden" name="country" value={country} />
           <input type="hidden" name="lat" value={lat} />
           <input type="hidden" name="lng" value={lng} />
@@ -87,18 +111,6 @@ export function SearchBox({
             Search nearby
           </button>
         </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-3 text-sm">
-        <button
-          type="button"
-          className="font-medium text-moss-deep underline-offset-2 hover:underline"
-          onClick={useCurrentLocation}
-        >
-          Use my current location
-        </button>
-        {geoStatus ? <span className="text-ink-soft">{geoStatus}</span> : (
-          <span className="text-ink-soft">Or type a postcode such as SE6 4AA, or a street address.</span>
-        )}
       </div>
     </form>
   );

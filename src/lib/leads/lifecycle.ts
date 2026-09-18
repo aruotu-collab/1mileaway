@@ -1,10 +1,8 @@
 import { prisma } from "@/lib/db";
-import { AVAILABILITY, CHARGING, LEAD_STATUS, PAYMENT_STATES } from "@/lib/constants";
+import { CHARGING, LEAD_STATUS, PAYMENT_STATES } from "@/lib/constants";
 import { writeAudit } from "@/lib/admin/audit";
-import { sendEmail, availabilityActionHtml, paymentRequestHtml } from "@/lib/email/adapter";
-import { createCheckoutForLead } from "@/lib/payments/adapter";
-import { formatMoney, hashToken, randomToken } from "@/lib/utils";
-import { setAvailability } from "@/lib/availability/engine";
+import { sendEmail, availabilityActionHtml } from "@/lib/email/adapter";
+import { hashToken, randomToken } from "@/lib/utils";
 
 export async function resolveTrialAllowance(businessId: string) {
   const business = await prisma.business.findUnique({
@@ -173,30 +171,13 @@ export async function qualifyLead(leadId: string) {
           expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         },
       });
-      if (result.chargingMode === CHARGING.FREE_TRIAL) {
-        await sendEmail({
-          to: owner.email,
-          businessId: lead.businessId,
-          template: "lead_qualified",
-          subject: "New qualified lead — still available?",
-          html: `<p>A customer was connected through 1mileaway.</p>${availabilityActionHtml(token)}`,
-        });
-      } else {
-        const checkout = await createCheckoutForLead(result.lead.id);
-        const amount = formatMoney(result.lead.priceMinor ?? 0, result.lead.currency ?? "GBP");
-        await sendEmail({
-          to: owner.email,
-          businessId: lead.businessId,
-          template: "payment_request",
-          subject: "Settle this lead to continue",
-          html: paymentRequestHtml(checkout.url, amount),
-        });
-        await setAvailability({
-          businessId: lead.businessId,
-          status: AVAILABILITY.UNKNOWN,
-          source: "outstanding_lead",
-        });
-      }
+      await sendEmail({
+        to: owner.email,
+        businessId: lead.businessId,
+        template: "lead_qualified",
+        subject: "New qualified lead — still available?",
+        html: `<p>A customer was connected through 1mileaway.</p>${availabilityActionHtml(token)}`,
+      });
     }
     return result.lead;
   });

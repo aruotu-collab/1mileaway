@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { SearchBox } from "@/components/search-box";
+import { MarketplaceSearch } from "@/components/marketplace-search";
 
 export default async function HomePage() {
   const professions = await prisma.professionSlug.findMany({
@@ -25,7 +25,7 @@ export default async function HomePage() {
         Not a stale directory. 1mileaway shows people who serve your area and have recently said they are free to take work.
       </p>
       <div className="mt-3 sm:mt-4">
-        <SearchBox defaultLocation="" showUrgencyTabs />
+        <MarketplaceSearch defaultLocation="" showUrgencyTabs />
       </div>
 
       <section className="mt-14">
@@ -61,7 +61,7 @@ export default async function HomePage() {
       <section className="card mt-14 p-6 sm:p-8">
         <h2 className="serif text-3xl">Are you a professional?</h2>
         <p className="mt-3 max-w-xl text-ink-soft">
-          Start with free qualified leads. No prepaid wallet. After the trial you get one trust lead, then settle that job to continue.
+          Two months free, then a monthly listing. Nearby customers tap Call now and ring you directly. Each call is emailed to you and counted in your account so you can see if it is worth paying for.
         </p>
         <Link href="/for-professionals" className="btn btn-primary mt-5">
           Join as a professional

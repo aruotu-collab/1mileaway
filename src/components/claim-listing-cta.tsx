@@ -1,5 +1,6 @@
 import { requestProfileClaim } from "@/app/actions/claim";
 import { maskEmail } from "@/lib/utils";
+import { unclaimedDemandCopy } from "@/lib/listing-insights";
 
 export function ClaimListingCta({
   businessId,
@@ -10,6 +11,10 @@ export function ClaimListingCta({
   from,
   sent,
   error,
+  asks = 0,
+  asksLast30 = 0,
+  trades = [],
+  areas = [],
 }: {
   businessId: string;
   country: string;
@@ -19,13 +24,18 @@ export function ClaimListingCta({
   from?: string;
   sent?: boolean;
   error?: string;
+  asks?: number;
+  asksLast30?: number;
+  trades?: string[];
+  areas?: string[];
 }) {
   return (
     <section className="card mt-8 p-5">
       <h2 className="serif text-2xl">Is this your business?</h2>
-      <p className="mt-2 text-ink-soft">
-        Claim {name} free. Confirm your details, tell nearby customers when you are available, and start a free
-        trial of qualified leads. No prepaid wallet.
+      <p className="mt-2 text-ink-soft">{unclaimedDemandCopy({ asks, asksLast30, trades, areas })}</p>
+      <p className="mt-3 text-ink-soft">
+        Claim {name} to turn on Call now for two months free. Your dashboard will count every tap through the web app.
+        We cannot show page views, call length, or whether a phone was answered.
       </p>
       {sent ? (
         <p className="mt-4">

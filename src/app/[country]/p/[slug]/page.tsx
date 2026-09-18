@@ -6,7 +6,8 @@ import { ListingCard } from "@/components/listing-card";
 import { ClaimListingCta } from "@/components/claim-listing-cta";
 import { isAvailabilityLive } from "@/lib/availability/engine";
 import { CLAIM_STATUS } from "@/lib/constants";
-import { publicCallPhone } from "@/lib/phone";
+import { listingCallOptions } from "@/lib/phone";
+import { marketplaceStats } from "@/lib/subscription";
 
 export async function generateMetadata({
   params,
@@ -41,6 +42,7 @@ export default async function ProfilePage({
     where: { slug },
     include: {
       availability: true,
+      subscription: true,
       locations: { include: { location: true } },
       professions: { include: { profession: { include: { slugs: true } } } },
       reviews: { where: { published: true }, orderBy: { createdAt: "desc" }, take: 10 },
@@ -58,6 +60,12 @@ export default async function ProfilePage({
   const resultsHref = safeReturnPath(query.from, `/${country}/${professionSlug}/${locationSlug}`);
   const fromSlug = resultsHref.split("/").filter(Boolean).at(-1) ?? locationSlug;
   const resultsLabel = fromSlug.replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+  const unclaimed = business.claimStatus === CLAIM_STATUS.UNCLAIMED;
+  const stats = unclaimed ? await marketplaceStats(business.id) : null;
+  const trades = business.professions.map(
+    (row) => row.profession.slugs.find((slugRow) => slugRow.countryId === business.countryId)?.pluralName ?? row.profession.internalId,
+  );
+  const areas = business.locations.map((row) => row.location.name);
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
@@ -76,6 +84,7 @@ export default async function ProfilePage({
         availabilityStatus={status}
         availabilityConfirmedAt={business.availability?.confirmedAt}
         answerRate={business.answerRate}
+        answerReports={business.answerReports}
         ratingAvg={business.ratingAvg}
         ratingCount={business.ratingCount}
         claimStatus={business.claimStatus}
@@ -83,9 +92,9 @@ export default async function ProfilePage({
         professionId={profession?.professionId}
         locationId={business.locations[0]?.locationId}
         showProfileLink={false}
-        phone={publicCallPhone(business)}
+        {...listingCallOptions(business)}
       />
-      {business.claimStatus === CLAIM_STATUS.UNCLAIMED ? (
+      {unclaimed && stats ? (
         <ClaimListingCta
           businessId={business.id}
           country={country}
@@ -95,6 +104,10 @@ export default async function ProfilePage({
           from={query.from}
           sent={query.claimSent === "1"}
           error={query.claimError}
+          asks={stats.asks}
+          asksLast30={stats.asksLast30}
+          trades={trades}
+          areas={areas}
         />
       ) : null}
       <section className="mt-8">
@@ -104,9 +117,9 @@ export default async function ProfilePage({
         </p>
       </section>
       <section className="mt-8">
-        <h2 className="serif text-2xl">Reviews from real jobs</h2>
+        <h2 className="serif text-2xl">Reviews from 1mileaway calls</h2>
         {business.reviews.length === 0 ? (
-          <p className="mt-2 text-ink-soft">No published reviews yet.</p>
+          <p className="mt-2 text-ink-soft">No reviews yet. They appear after a customer calls and rates this listing.</p>
         ) : (
           <ul className="mt-3 grid gap-3">
             {business.reviews.map((review) => (

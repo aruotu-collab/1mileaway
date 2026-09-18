@@ -1,7 +1,10 @@
 import Link from "next/link";
-import { startCall } from "@/app/actions/calls";
+import { askTradesman, startCall } from "@/app/actions/calls";
 import { AvailabilityBadge } from "@/components/availability-badge";
+import { MiniRadar } from "@/components/nearby-radar";
 import { PhoneIcon } from "@/components/phone-icon";
+import { AVAILABILITY } from "@/lib/constants";
+import { canShowAnswerRate } from "@/lib/reputation";
 
 type ListingCardProps = {
   country: string;
@@ -12,6 +15,7 @@ type ListingCardProps = {
   availabilityStatus: string;
   availabilityConfirmedAt?: Date | null;
   answerRate: number;
+  answerReports?: number;
   ratingAvg: number;
   ratingCount: number;
   claimStatus: string;
@@ -24,6 +28,8 @@ type ListingCardProps = {
   showProfileLink?: boolean;
   fromVisitor?: boolean;
   phone?: string | null;
+  canRequest?: boolean;
+  skip?: string;
 };
 
 export function ListingCard(props: ListingCardProps) {
@@ -34,7 +40,7 @@ export function ListingCard(props: ListingCardProps) {
   return (
     <article className={`card p-5 ${props.featured ? "ring-2 ring-moss/30" : ""}`}>
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="serif text-2xl leading-tight">
               {props.showProfileLink === false ? (
@@ -61,25 +67,34 @@ export function ListingCard(props: ListingCardProps) {
             {props.distanceMiles.toFixed(1)} miles {props.fromVisitor ? "from you" : "from this area"}
           </p>
         </div>
+        <MiniRadar
+          distanceMiles={props.distanceMiles}
+          live={props.availabilityStatus === AVAILABILITY.AVAILABLE_NOW}
+          label={`${props.distanceMiles.toFixed(1)} miles ${props.fromVisitor ? "from you" : "from this area"}`}
+        />
       </div>
       <div className="mt-3">
         <AvailabilityBadge status={props.availabilityStatus} confirmedAt={props.availabilityConfirmedAt} />
       </div>
       {props.about ? <p className="mt-3 text-ink-soft">{props.about}</p> : null}
-      <dl className="mt-4 flex flex-wrap gap-4 text-sm text-ink-soft">
-        <div>
-          <dt className="sr-only">Answer rate</dt>
-          <dd>{Math.round(props.answerRate * 100)}% answer rate</dd>
-        </div>
-        {props.ratingCount > 0 ? (
-          <div>
-            <dt className="sr-only">Rating</dt>
-            <dd>
-              {props.ratingAvg.toFixed(1)} from {props.ratingCount} reviews
-            </dd>
-          </div>
-        ) : null}
-      </dl>
+      {canShowAnswerRate(props.answerReports ?? 0) || props.ratingCount > 0 ? (
+        <dl className="mt-4 flex flex-wrap gap-4 text-sm text-ink-soft">
+          {canShowAnswerRate(props.answerReports ?? 0) ? (
+            <div>
+              <dt className="sr-only">Answer rate</dt>
+              <dd>{Math.round(props.answerRate * 100)}% answer rate</dd>
+            </div>
+          ) : null}
+          {props.ratingCount > 0 ? (
+            <div>
+              <dt className="sr-only">Rating</dt>
+              <dd>
+                {props.ratingAvg.toFixed(1)} from {props.ratingCount} reviews
+              </dd>
+            </div>
+          ) : null}
+        </dl>
+      ) : null}
       <div className="mt-5 flex flex-col gap-2 sm:flex-row">
         {props.phone ? (
           <form action={startCall} className="flex-1">
@@ -88,16 +103,25 @@ export function ListingCard(props: ListingCardProps) {
             <input type="hidden" name="locationId" value={props.locationId ?? ""} />
             <input type="hidden" name="country" value={props.country} />
             <input type="hidden" name="returnTo" value={props.resultsHref ?? `/${props.country}/p/${props.slug}`} />
+            {props.skip ? <input type="hidden" name="skip" value={props.skip} /> : null}
             <button className="btn btn-primary w-full" type="submit">
               <PhoneIcon />
               Call now
             </button>
           </form>
+        ) : props.canRequest ? (
+          <form action={askTradesman} className="flex-1">
+            <input type="hidden" name="businessId" value={props.businessId} />
+            <input type="hidden" name="professionId" value={props.professionId ?? ""} />
+            <input type="hidden" name="locationId" value={props.locationId ?? ""} />
+            <input type="hidden" name="returnTo" value={props.resultsHref ?? `/${props.country}/p/${props.slug}`} />
+            <button className="btn btn-primary w-full" type="submit">
+              Ask them to take this job
+            </button>
+          </form>
         ) : (
           <p className="flex-1 rounded-2xl border border-line bg-paper px-4 py-3 text-sm text-ink-soft">
-            {props.claimStatus === "UNCLAIMED"
-              ? "This listing is not claimed yet, so we do not connect a phone number."
-              : "This professional has not added a phone number yet."}
+            This listing is not taking calls through 1mileaway yet.
           </p>
         )}
         {props.showProfileLink === false ? null : (

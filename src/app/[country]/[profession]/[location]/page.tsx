@@ -1,17 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { SearchBox } from "@/components/search-box";
+import { MarketplaceSearch } from "@/components/marketplace-search";
 import { UrgencyTabs } from "@/components/urgency-tabs";
 import { ListingCard } from "@/components/listing-card";
 import { AddYourBusinessCta } from "@/components/claim-listing-cta";
 import { PhoneIcon } from "@/components/phone-icon";
-import { startCall } from "@/app/actions/calls";
-import { publicCallPhone } from "@/lib/phone";
+import { askTradesman, startCall } from "@/app/actions/calls";
+import { listingCallOptions } from "@/lib/phone";
 import { getActiveCountry, getLocationBySlug, getProfessionBySlug, listingsFor, nearbyLocations } from "@/lib/locations/service";
 import { isIndexable, robotsDirective } from "@/lib/seo/indexability";
 import { prisma } from "@/lib/db";
 import { AVAILABILITY } from "@/lib/constants";
+import { activityHeadlines, activitySnapshot } from "@/lib/activity";
+import { ActivityTape } from "@/components/activity-tape";
 
 type Params = { country: string; profession: string; location: string };
 
@@ -67,6 +69,7 @@ export default async function LocationProfessionPage({
     near?: string;
     lat?: string;
     lng?: string;
+    asked?: string;
   }>;
 }) {
   const { country, profession, location } = await params;
@@ -112,13 +115,28 @@ export default async function LocationProfessionPage({
   const availableNow = listings.filter((l) => l.availabilityStatus === AVAILABILITY.AVAILABLE_NOW).length;
   const featured = listings[0];
   const resultsHref = withVisitor(`/${country}/${profession}/${location}`);
+  const tape = activityHeadlines(
+    await activitySnapshot({
+      countryId: countryRow.id,
+      timezone: countryRow.timezone,
+      professionId: professionRow.professionId,
+      locationId: locationRow.id,
+      professionName: professionRow.name,
+      professionPlural: professionRow.pluralName,
+      locationName: locationRow.name,
+      availableNow,
+      listingCount: listings.length,
+    }),
+  );
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8">
+    <>
+      <ActivityTape items={tape} />
+      <main className="mx-auto max-w-6xl px-4 py-8">
       <p className="text-sm text-ink-soft">
         <Link href="/">Home</Link> / {countryRow.name} / {professionRow.pluralName}
       </p>
-      <h1 className="serif mt-3 text-4xl leading-tight sm:text-5xl">
+      <h1 className="serif mt-3 text-3xl leading-tight sm:text-4xl">
         {emergency ? "Emergency " : ""}
         {professionRow.pluralName} in {locationRow.name}
       </h1>
@@ -127,6 +145,12 @@ export default async function LocationProfessionPage({
         {availableNow ? ` · ${availableNow} recently available` : ""}
         {query.near ? ` · distances from ${query.near}` : ""}
       </p>
+      {query.asked === "1" ? (
+        <p className="card mt-4 p-4">
+          We have asked that professional to join. If they are already on 1mileaway, we asked them to turn Call now back
+          on. You can still ring anyone below who is live.
+        </p>
+      ) : null}
 
       {professionRow.profession.emergencyEligible && professionRow.emergencySlug ? (
         <div className="mt-6 max-w-md">
@@ -139,7 +163,7 @@ export default async function LocationProfessionPage({
       ) : null}
 
       <div className="mt-6">
-        <SearchBox
+        <MarketplaceSearch
           key={query.near ?? locationRow.slug}
           country={country}
           defaultProfession={professionRow.slug}
@@ -177,6 +201,7 @@ export default async function LocationProfessionPage({
               availabilityStatus={featured.availabilityStatus}
               availabilityConfirmedAt={featured.availabilityConfirmedAt}
               answerRate={featured.answerRate}
+              answerReports={featured.answerReports}
               ratingAvg={featured.ratingAvg}
               ratingCount={featured.ratingCount}
               claimStatus={featured.claimStatus}
@@ -186,10 +211,10 @@ export default async function LocationProfessionPage({
               locationId={locationRow.id}
               resultsHref={resultsHref}
               fromVisitor={Boolean(visitorOrigin)}
-              phone={publicCallPhone(featured)}
+              {...listingCallOptions(featured)}
             />
           </div>
-          {publicCallPhone(featured) ? (
+          {listingCallOptions(featured).phone ? (
             <form action={startCall} className="sticky bottom-3 z-20 mt-3 sm:hidden">
               <input type="hidden" name="businessId" value={featured.id} />
               <input type="hidden" name="professionId" value={professionRow.professionId} />
@@ -199,6 +224,16 @@ export default async function LocationProfessionPage({
               <button className="btn btn-primary w-full shadow-lg" type="submit">
                 <PhoneIcon />
                 Call {featured.name}
+              </button>
+            </form>
+          ) : listingCallOptions(featured).canRequest ? (
+            <form action={askTradesman} className="sticky bottom-3 z-20 mt-3 sm:hidden">
+              <input type="hidden" name="businessId" value={featured.id} />
+              <input type="hidden" name="professionId" value={professionRow.professionId} />
+              <input type="hidden" name="locationId" value={locationRow.id} />
+              <input type="hidden" name="returnTo" value={resultsHref} />
+              <button className="btn btn-primary w-full shadow-lg" type="submit">
+                Ask {featured.name} to take this job
               </button>
             </form>
           ) : null}
@@ -222,6 +257,7 @@ export default async function LocationProfessionPage({
                 availabilityStatus={listing.availabilityStatus}
                 availabilityConfirmedAt={listing.availabilityConfirmedAt}
                 answerRate={listing.answerRate}
+                answerReports={listing.answerReports}
                 ratingAvg={listing.ratingAvg}
                 ratingCount={listing.ratingCount}
                 claimStatus={listing.claimStatus}
@@ -231,7 +267,7 @@ export default async function LocationProfessionPage({
                 locationId={locationRow.id}
                 resultsHref={resultsHref}
                 fromVisitor={Boolean(visitorOrigin)}
-                phone={publicCallPhone(listing)}
+                {...listingCallOptions(listing)}
               />
             ))}
           </div>
@@ -259,5 +295,6 @@ export default async function LocationProfessionPage({
         </div>
       </section>
     </main>
+    </>
   );
 }

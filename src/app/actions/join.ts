@@ -3,21 +3,22 @@
 import { redirect } from "next/navigation";
 import { createUnclaimedListingRecord } from "@/lib/listings/create";
 import { inviteUnclaimedBusiness } from "@/lib/claim/invite";
+import { parseProfessionIds } from "@/lib/professions";
 
 export async function createOwnListing(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const professionId = String(formData.get("professionId") ?? "");
+  const professionIds = parseProfessionIds(formData.getAll("professionId"));
   const locationId = String(formData.get("locationId") ?? "");
   const phone = String(formData.get("phone") ?? "").trim();
-  if (!name || !email.includes("@") || !professionId || !locationId || !phone) {
+  if (!name || !email.includes("@") || !professionIds.length || !locationId || !phone) {
     redirect("/join?error=missing");
   }
 
   const result = await createUnclaimedListingRecord({
     name,
     email,
-    professionId,
+    professionIds,
     locationId,
     phone,
     phoneReal: phone,
@@ -30,7 +31,7 @@ export async function createOwnListing(formData: FormData) {
   const invite = await inviteUnclaimedBusiness({
     businessId: result.business.id,
     locationId,
-    professionId,
+    professionId: professionIds[0],
     source: "self",
     force: result.created,
   });

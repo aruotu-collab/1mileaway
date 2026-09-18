@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { createHash } from "crypto";
+import { ensureProfessionCatalog } from "../src/lib/profession-catalog";
 
 const prisma = new PrismaClient();
 
@@ -22,6 +23,7 @@ async function main() {
   await prisma.lead.deleteMany();
   await prisma.callEvent.deleteMany();
   await prisma.call.deleteMany();
+  await prisma.subscription.deleteMany();
   await prisma.trackingNumber.deleteMany();
   await prisma.businessVerification.deleteMany();
   await prisma.availabilityHistory.deleteMany();
@@ -62,58 +64,11 @@ async function main() {
   const gb = countries.find((c) => c.iso2 === "gb")!;
   const us = countries.find((c) => c.iso2 === "us")!;
 
-  const categories = await Promise.all(
-    [
-      { slug: "home-emergency", name: "Home emergency", sortOrder: 1 },
-      { slug: "construction", name: "Construction", sortOrder: 2 },
-      { slug: "garden", name: "Garden", sortOrder: 3 },
-      { slug: "cleaning", name: "Cleaning", sortOrder: 4 },
-      { slug: "vehicle", name: "Vehicle", sortOrder: 5 },
-      { slug: "professional-services", name: "Professional services", sortOrder: 6 },
-    ].map((c) => prisma.professionCategory.create({ data: c })),
-  );
-  const emergency = categories.find((c) => c.slug === "home-emergency")!;
-  const garden = categories.find((c) => c.slug === "garden")!;
-  const cleaning = categories.find((c) => c.slug === "cleaning")!;
-
-  const professionDefs = [
-    { internalId: "plumber", name: "Plumber", plural: "Plumbers", slug: "plumbers", emergencySlug: "emergency-plumbers", categoryId: emergency.id, emergencyEligible: true },
-    { internalId: "electrician", name: "Electrician", plural: "Electricians", slug: "electricians", emergencySlug: "emergency-electricians", categoryId: emergency.id, emergencyEligible: true },
-    { internalId: "locksmith", name: "Locksmith", plural: "Locksmiths", slug: "locksmiths", emergencySlug: "emergency-locksmiths", categoryId: emergency.id, emergencyEligible: true },
-    { internalId: "drainage", name: "Drainage engineer", plural: "Drainage engineers", slug: "drainage", emergencySlug: "emergency-drainage", categoryId: emergency.id, emergencyEligible: true },
-    { internalId: "heating", name: "Heating engineer", plural: "Heating engineers", slug: "heating-engineers", emergencySlug: "emergency-heating", categoryId: emergency.id, emergencyEligible: true },
-    { internalId: "hvac", name: "HVAC technician", plural: "HVAC technicians", slug: "hvac", emergencySlug: "emergency-hvac", categoryId: emergency.id, emergencyEligible: true },
-    { internalId: "gardener", name: "Gardener", plural: "Gardeners", slug: "gardeners", emergencySlug: null, categoryId: garden.id, emergencyEligible: false },
-    { internalId: "cleaner", name: "Cleaner", plural: "Cleaners", slug: "cleaners", emergencySlug: null, categoryId: cleaning.id, emergencyEligible: false },
-  ];
-
-  const professions = [];
-  for (const def of professionDefs) {
-    const profession = await prisma.profession.create({
-      data: {
-        internalId: def.internalId,
-        categoryId: def.categoryId,
-        emergencyEligible: def.emergencyEligible,
-        synonyms: { create: [{ term: def.plural.toLowerCase() }, { term: def.name.toLowerCase() }] },
-        slugs: {
-          create: countries
-            .filter((c) => c.tier === 1)
-            .map((country) => ({
-              countryId: country.id,
-              slug: def.slug,
-              emergencySlug: def.emergencySlug,
-              name: def.name,
-              pluralName: def.plural,
-            })),
-        },
-      },
-    });
-    professions.push(profession);
-  }
-  const plumber = professions.find((p) => p.internalId === "plumber")!;
-  const electrician = professions.find((p) => p.internalId === "electrician")!;
-  const locksmith = professions.find((p) => p.internalId === "locksmith")!;
-  const drainage = professions.find((p) => p.internalId === "drainage")!;
+  await ensureProfessionCatalog(prisma);
+  const plumber = await prisma.profession.findUniqueOrThrow({ where: { internalId: "plumber" } });
+  const electrician = await prisma.profession.findUniqueOrThrow({ where: { internalId: "electrician" } });
+  const locksmith = await prisma.profession.findUniqueOrThrow({ where: { internalId: "locksmith" } });
+  const drainage = await prisma.profession.findUniqueOrThrow({ where: { internalId: "drainage" } });
 
   const london = await prisma.location.create({
     data: {
@@ -194,7 +149,7 @@ async function main() {
       professionId: plumber.id,
       locations: [catford.id, lewisham.id],
       claimStatus: "VERIFIED",
-      paymentState: "FREE_TRIAL_ACTIVE",
+      paymentState: "SUBSCRIPTION_ACTIVE",
       remaining: 5,
       status: "AVAILABLE_NOW",
       expiresAt: hoursFromNow(3),
@@ -212,7 +167,7 @@ async function main() {
       professionId: plumber.id,
       locations: [lewisham.id, catford.id],
       claimStatus: "CLAIMED",
-      paymentState: "FREE_TRIAL_ACTIVE",
+      paymentState: "SUBSCRIPTION_ACTIVE",
       remaining: 5,
       status: "AVAILABLE_TODAY",
       expiresAt: hoursFromNow(10),
@@ -226,15 +181,15 @@ async function main() {
       person: "Lee Grant",
       name: "Grant Pipework",
       slug: "grant-pipework",
-      about: "Independent plumber. Trial used — next connection is a trust lead.",
+      about: "Independent plumber. Two-month free trial — see how many 1mileaway calls you get.",
       professionId: plumber.id,
       locations: [catford.id, peckham.id],
       claimStatus: "CLAIMED",
-      paymentState: "TRUST_LEAD_AVAILABLE",
+      paymentState: "SUBSCRIPTION_TRIALING",
       remaining: 0,
       used: 5,
       status: "AVAILABLE_NOW",
-      expiresAt: hoursFromNow(2),
+      expiresAt: hoursFromNow(4),
       ratingAvg: 4.4,
       ratingCount: 11,
       answerRate: 0.77,
@@ -245,11 +200,11 @@ async function main() {
       person: "Pat Singh",
       name: "Singh Local Plumbing",
       slug: "singh-local-plumbing",
-      about: "Settled and ready after payment. Still listed while a lead is outstanding.",
+      about: "Local plumber covering Catford and Croydon.",
       professionId: plumber.id,
       locations: [catford.id, croydon.id],
       claimStatus: "CLAIMED",
-      paymentState: "OUTSTANDING_LEAD",
+      paymentState: "UNSUBSCRIBED",
       remaining: 0,
       used: 5,
       status: "UNKNOWN",
@@ -268,7 +223,7 @@ async function main() {
       professionId: electrician.id,
       locations: [catford.id, lewisham.id],
       claimStatus: "VERIFIED",
-      paymentState: "FREE_TRIAL_ACTIVE",
+      paymentState: "SUBSCRIPTION_ACTIVE",
       remaining: 5,
       status: "AVAILABLE_NOW",
       expiresAt: hoursFromNow(4),
@@ -286,7 +241,7 @@ async function main() {
       professionId: locksmith.id,
       locations: [catford.id, lewisham.id, peckham.id],
       claimStatus: "CLAIMED",
-      paymentState: "FREE_TRIAL_ACTIVE",
+      paymentState: "SUBSCRIPTION_ACTIVE",
       remaining: 5,
       status: "AVAILABLE_TODAY",
       expiresAt: hoursFromNow(8),
@@ -311,9 +266,10 @@ async function main() {
         phoneDisplay: person.phone,
         phoneReal: person.phone,
         about: person.about,
-        ratingAvg: person.ratingAvg,
-        ratingCount: person.ratingCount,
-        answerRate: person.answerRate,
+        ratingAvg: 0,
+        ratingCount: 0,
+        answerRate: 0,
+        answerReports: 0,
         professions: { create: { professionId: person.professionId } },
         locations: { create: person.locations.map((locationId) => ({ locationId, radiusMiles: 3 })) },
         users: { create: { profileId: profile.id, role: "owner" } },
@@ -328,6 +284,18 @@ async function main() {
         trialBalance: {
           create: { remaining: person.remaining, used: person.used ?? 0 },
         },
+        subscription:
+          person.paymentState === "SUBSCRIPTION_ACTIVE" || person.paymentState === "SUBSCRIPTION_TRIALING"
+            ? {
+                create: {
+                  status: person.paymentState === "SUBSCRIPTION_TRIALING" ? "trialing" : "active",
+                  amountMinor: 2900,
+                  currency: "GBP",
+                  currentPeriodEnd: hoursFromNow(person.paymentState === "SUBSCRIPTION_TRIALING" ? 24 * 50 : 24 * 30),
+                  provider: person.paymentState === "SUBSCRIPTION_TRIALING" ? "trial" : "mock",
+                },
+              }
+            : undefined,
         trackingNumbers: {
           create: { number: `SIM-${person.slug.slice(0, 8).toUpperCase()}` },
         },
@@ -337,6 +305,20 @@ async function main() {
             : undefined,
       },
     });
+
+    if (person.paymentState === "SUBSCRIPTION_TRIALING") {
+      for (const daysAgo of [12, 5, 1]) {
+        await prisma.call.create({
+          data: {
+            businessId: business.id,
+            toNumber: person.phone,
+            status: "dialling",
+            startedAt: hoursFromNow(-24 * daysAgo),
+            events: { create: { type: "direct_dial" } },
+          },
+        });
+      }
+    }
 
     if (person.paymentState === "OUTSTANDING_LEAD") {
       const call = await prisma.call.create({
@@ -383,7 +365,7 @@ async function main() {
       name: "Rushey Green Plumbing",
       countryId: gb.id,
       claimStatus: "UNCLAIMED",
-      paymentState: "FREE_TRIAL_ACTIVE",
+      paymentState: "UNSUBSCRIBED",
       contactEmail: "dan@demo.1mileaway.com",
       phoneDisplay: "Ask to claim",
       about: "Independent plumber. This listing is waiting to be claimed after a real customer enquiry.",

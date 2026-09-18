@@ -1,11 +1,41 @@
 import { describe, expect, it } from "vitest";
-import { publicCallPhone, toTelHref } from "@/lib/phone";
+import { canRequestTradesman, publicCallPhone, toTelHref } from "@/lib/phone";
 
 describe("publicCallPhone", () => {
-  it("only exposes a claimed professional's own number", () => {
-    expect(publicCallPhone({ claimStatus: "CLAIMED", phoneReal: "020 7946 0101" })).toBe("020 7946 0101");
-    expect(publicCallPhone({ claimStatus: "UNCLAIMED", phoneReal: "020 7946 0101" })).toBeNull();
-    expect(publicCallPhone({ claimStatus: "CLAIMED", phoneReal: null })).toBeNull();
+  it("only exposes a subscribed professional's own number", () => {
+    expect(
+      publicCallPhone({
+        claimStatus: "CLAIMED",
+        paymentState: "SUBSCRIPTION_ACTIVE",
+        phoneReal: "020 7946 0101",
+      }),
+    ).toBe("020 7946 0101");
+    expect(publicCallPhone({ claimStatus: "CLAIMED", paymentState: "UNSUBSCRIBED", phoneReal: "020 7946 0101" })).toBeNull();
+    expect(
+      publicCallPhone({
+        claimStatus: "CLAIMED",
+        paymentState: "SUBSCRIPTION_TRIALING",
+        phoneReal: "020 7946 0101",
+        currentPeriodEnd: new Date(Date.now() + 86400000),
+      }),
+    ).toBe("020 7946 0101");
+    expect(
+      publicCallPhone({
+        claimStatus: "CLAIMED",
+        paymentState: "SUBSCRIPTION_TRIALING",
+        phoneReal: "020 7946 0101",
+        currentPeriodEnd: new Date(Date.now() - 1000),
+      }),
+    ).toBeNull();
+    expect(publicCallPhone({ claimStatus: "UNCLAIMED", paymentState: "SUBSCRIPTION_ACTIVE", phoneReal: "020 7946 0101" })).toBeNull();
+  });
+});
+
+describe("canRequestTradesman", () => {
+  it("lets customers ask unclaimed listings that have an email", () => {
+    expect(canRequestTradesman({ claimStatus: "UNCLAIMED", contactEmail: "dan@demo.1mileaway.com" })).toBe(true);
+    expect(canRequestTradesman({ claimStatus: "UNCLAIMED", contactEmail: null })).toBe(false);
+    expect(canRequestTradesman({ claimStatus: "CLAIMED" })).toBe(true);
   });
 });
 

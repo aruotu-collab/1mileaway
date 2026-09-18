@@ -2,21 +2,59 @@
 
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
-import { completeClaim, inviteUnclaimedBusiness } from "@/lib/claim/invite";
+import { completeClaim, inviteUnclaimedBusiness, activateClaimedListing } from "@/lib/claim/invite";
+import { writeAudit } from "@/lib/admin/audit";
 import { prisma } from "@/lib/db";
 import { CLAIM_STATUS } from "@/lib/constants";
+import { requestMagicLink } from "@/app/actions/auth";
+import { claimCompletePath, parseProfessionIds } from "@/lib/professions";
+
+export async function requestClaimLink(formData: FormData) {
+  const token = String(formData.get("token") ?? "");
+  const professionIds = parseProfessionIds(formData.getAll("professionId"));
+  if (!token) redirect("/join");
+  if (!professionIds.length) redirect(`/claim/${token}?error=trades`);
+  formData.set("next", claimCompletePath(token, professionIds));
+  formData.set("sentRedirect", `/claim/${token}?sent=1&professions=${encodeURIComponent(professionIds.join(","))}`);
+  await requestMagicLink(formData);
+}
 
 export async function finishClaim(formData: FormData) {
   const token = String(formData.get("token") ?? "");
+  const professionIds = parseProfessionIds(formData.getAll("professionId"));
   const user = await getSession();
   if (!user) {
-    redirect(`/login?next=${encodeURIComponent(`/claim/complete?token=${token}`)}`);
+    redirect(`/login?next=${encodeURIComponent(claimCompletePath(token, professionIds))}`);
   }
   try {
-    await completeClaim({ token, profileId: user.id, email: user.email });
+    await completeClaim({ token, profileId: user.id, email: user.email, professionIds });
   } catch {
     redirect(`/claim/${token}?error=claim`);
   }
+  redirect("/professional?claimed=1");
+}
+
+export async function claimMatchingListing() {
+  const user = await getSession();
+  if (!user) redirect("/login?next=/professional");
+  const business = await prisma.business.findFirst({
+    where: {
+      contactEmail: user.email.toLowerCase(),
+      claimStatus: CLAIM_STATUS.UNCLAIMED,
+      deletedAt: null,
+      users: { none: {} },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  if (!business) redirect("/join");
+  await activateClaimedListing({ businessId: business.id, profileId: user.id });
+  await writeAudit({
+    actorId: user.id,
+    action: "claim.completed",
+    entityType: "business",
+    entityId: business.id,
+    metadata: { source: "matching_email" },
+  });
   redirect("/professional?claimed=1");
 }
 

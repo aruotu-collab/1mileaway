@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { APP_URL } from "@/lib/constants";
-import { randomToken } from "@/lib/utils";
+import { randomToken, safeNextPath } from "@/lib/utils";
 
 export type EmailTemplate =
   | "magic_link"
@@ -10,6 +10,12 @@ export type EmailTemplate =
   | "payment_settled"
   | "lead_qualified"
   | "inbound_call"
+  | "subscription_started"
+  | "trial_started"
+  | "trial_ended"
+  | "trial_checkin"
+  | "trial_ending"
+  | "subscribe_from_demand"
   | "claim_invite"
   | "outreach_day3"
   | "outreach_day8";
@@ -81,8 +87,8 @@ export async function sendEmail(input: SendInput) {
   return { id: record.id, mocked: false };
 }
 
-export function magicLinkHtml(token: string) {
-  const url = `${APP_URL}/auth/callback?token=${token}`;
+export function magicLinkHtml(token: string, next = "/professional") {
+  const url = `${APP_URL}/auth/callback?token=${encodeURIComponent(token)}&next=${encodeURIComponent(safeNextPath(next))}`;
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px">
   <tr>
     <td style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#1b2117">
@@ -123,8 +129,8 @@ export function claimInviteHtml(input: {
   unsubscribeUrl?: string;
 }) {
   return `<p>A customer in ${input.area} just asked for a ${input.profession} through 1mileaway.</p>
-    <p>They tried to reach <strong>${input.businessName}</strong>. Claim this listing to receive the lead. No prepaid wallet — you start on a free trial of qualified leads.</p>
-    <p><a href="${input.claimUrl}">Claim this listing</a></p>
+    <p>They tried to reach <strong>${input.businessName}</strong>. Claim this listing and you get two months free. Customers ring your own number, we email you, and we count every call so you can see if it is worth paying for.</p>
+    <p><a href="${input.claimUrl}">Claim this listing — two months free</a></p>
     <p>Already joining? After you claim, you can mark availability from your dashboard, or use this link:</p>
     <p><a href="${input.availableUrl}">I am available now</a></p>
     ${input.unsubscribeUrl ? `<p><a href="${input.unsubscribeUrl}">Unsubscribe from listing invites</a></p>` : ""}`;
@@ -136,10 +142,68 @@ export function listingInviteHtml(input: {
   availableUrl: string;
   unsubscribeUrl: string;
 }) {
-  return `<p>Finish claiming <strong>${input.businessName}</strong> on 1mileaway. Free trial of qualified leads. No prepaid wallet.</p>
-    <p><a href="${input.claimUrl}">Claim this listing</a></p>
+  return `<p>Finish claiming <strong>${input.businessName}</strong> on 1mileaway. You get two months free: nearby customers can ring you, and we count every call in your account.</p>
+    <p><a href="${input.claimUrl}">Claim this listing — two months free</a></p>
     <p><a href="${input.availableUrl}">I am available now</a></p>
     <p><a href="${input.unsubscribeUrl}">Unsubscribe</a></p>`;
+}
+
+export function inboundCallHtml(input: {
+  businessName: string;
+  area: string;
+  phone: string;
+  totalCalls?: number;
+}) {
+  const total = input.totalCalls ?? 1;
+  return `<p>A customer just tapped Call now on 1mileaway. Their phone is ringing <strong>${input.businessName}</strong> on ${input.phone}.</p>
+    <p>They have been asked to say they found you on 1mileaway when you pick up.</p>
+    <p>1mileaway has now sent you <strong>${total}</strong> customer call${total === 1 ? "" : "s"}. That running total is what you use to decide whether to keep the listing after your trial.</p>
+    <p><a href="${APP_URL}/professional/leads">See your call statistics</a></p>
+    <p>If they asked for work in ${input.area}, that is a real 1mileaway enquiry.</p>`;
+}
+
+export function subscribeFromDemandHtml(input: {
+  businessName: string;
+  area: string;
+  subscribeUrl: string;
+  totalCalls?: number;
+}) {
+  const calls = input.totalCalls ?? 0;
+  return `<p>A customer in ${input.area} just asked for <strong>${input.businessName}</strong> on 1mileaway.</p>
+    <p>They could not be connected because Call now is off. ${calls ? `During your trial we sent you ${calls} calls. ` : ""}Subscribe to take the next one on your own number.</p>
+    <p><a href="${input.subscribeUrl}">See your numbers and subscribe</a></p>`;
+}
+
+export function trialStartedHtml(input: { businessName: string; trialEndLabel: string; priceLabel: string }) {
+  return `<p>Your listing for <strong>${input.businessName}</strong> is live. You have two months free, until ${input.trialEndLabel}.</p>
+    <p>Nearby customers can tap Call now and ring your own number. Each time they do, we email you and add it to your call count.</p>
+    <p>At the end of the trial we send you that analysis so you can decide whether ${input.priceLabel} is worth it. If it is not, Call now simply turns off.</p>
+    <p><a href="${APP_URL}/professional">Open your dashboard</a></p>`;
+}
+
+export function trialStatsHtml(input: {
+  heading: string;
+  businessName: string;
+  totalCalls: number;
+  callsLast30: number;
+  asks: number;
+  daysLeft?: number | null;
+  priceLabel: string;
+  ctaLabel: string;
+  ctaUrl: string;
+}) {
+  const days =
+    input.daysLeft == null ? "" : `<p>Your free trial has ${input.daysLeft} day${input.daysLeft === 1 ? "" : "s"} left.</p>`;
+  return `<p>${input.heading}</p>
+    <p>So far 1mileaway has sent <strong>${input.businessName}</strong>:</p>
+    <ul>
+      <li><strong>${input.totalCalls}</strong> customer calls in total</li>
+      <li><strong>${input.callsLast30}</strong> in the last 30 days</li>
+      <li><strong>${input.asks}</strong> more customers asked for you when they could not get through</li>
+    </ul>
+    ${days}
+    <p>That is the proof of whether this is worth ${input.priceLabel}.</p>
+    <p><a href="${input.ctaUrl}">${input.ctaLabel}</a></p>`;
 }
 
 export function paymentRequestHtml(checkoutUrl: string, amount: string) {

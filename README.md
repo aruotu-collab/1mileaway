@@ -2,7 +2,7 @@
 
 Find a professional nearby who is genuinely available and ready to help.
 
-This is a country-first marketplace: listings, availability, free-trial qualified leads, one trust lead, then settle-to-continue. There is no prepaid professional wallet.
+This is a country-first marketplace: listings, availability, and a monthly subscription. Customers ring the professional’s own number. There is no prepaid wallet and no per-lead bill.
 
 ## Local setup
 
@@ -21,9 +21,9 @@ Open [http://localhost:3000](http://localhost:3000) then `/gb/plumbers/catford`.
 Request a magic link from `/login`. Without Resend, the latest local link is shown on the login page and stored under Admin → Emails.
 
 - Super admin: `aruotu@gmail.com`
-- Available plumber: `kira@demo.1mileaway.com`
-- Trust-lead ready: `lee@demo.1mileaway.com`
-- Outstanding lead: `pat@demo.1mileaway.com`
+- Subscribed plumber: `kira@demo.1mileaway.com`
+- Two-month trial plumber: `lee@demo.1mileaway.com`
+- Claimed, not subscribed: `pat@demo.1mileaway.com`
 
 Set `DEV_MAGIC_BYPASS=1` to sign in immediately after submitting an email (local only).
 
@@ -33,11 +33,11 @@ Next.js App Router, TypeScript, Tailwind, Prisma/SQLite locally (Postgres/Supaba
 
 ## Core model
 
-1. Free trial of qualified leads (default 5, configurable globally / country / profession / professional).
-2. One unpaid trust lead after the trial.
-3. Pay that lead in local currency to continue. Webhook (or mock checkout) is authoritative.
-4. Missed or “not a job” confirmations do not consume the trial.
-5. An outstanding lead pauses Available Now but does not delete the listing.
+1. Professionals claim a listing with their own work email and phone number.
+2. They get two months free with Call now on.
+3. Each customer tap emails them and is counted in their account.
+4. After the trial they pay monthly to keep Call now, using those numbers to decide.
+5. Unclaimed listings get “Ask them to take this job” instead of a phone number.
 
 ## Useful routes
 

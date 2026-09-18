@@ -1,11 +1,9 @@
 # Lead lifecycle
 
-A lead is created when a customer taps Call now. That rings the professional’s own number directly. Qualification happens when the professional confirms it was a real job.
+A call is logged when a customer taps Call now on a trial or paid listing. That rings the professional’s own number. They are emailed at the same moment, and the call appears in their account with running totals.
 
-- Missed, wrong-number, or “not a job” confirmations → disqualified. Trial is not consumed.
-- Confirmed real job:
-  - If trial remaining > 0 → `FREE_TRIAL`, decrement remaining.
-  - Else if no open balance → `TRUST_LEAD`, snapshot price, create one outstanding balance, set `OUTSTANDING_LEAD`.
-  - Else reject — a second unpaid lead cannot be created.
+After the call, the customer can say whether the tradesman answered and leave a 1–5 review. If they did not pick up, 1mileaway offers the next closest callable listing. Answer rate is hidden until five of those reports exist. Reviews only appear from those ratings.
 
-`qualifyLead` runs in a transaction so two simultaneous qualifications cannot create two open balances.
+Unclaimed listings cannot be dialled. The customer can ask them to take the job; 1mileaway emails a join link and starts their two-month trial when they claim.
+
+After the trial, Call now stays on only with a monthly subscription. Billing is that subscription, not the call.

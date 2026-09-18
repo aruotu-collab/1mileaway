@@ -1,50 +1,110 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
-import { payOutstanding } from "@/app/actions/payments";
-import { formatMoney } from "@/lib/utils";
+import { startSubscription } from "@/app/actions/payments";
+import { formatMoney, formatLocalDateTime } from "@/lib/utils";
+import {
+  daysRemaining,
+  expireEndedTrials,
+  isSubscriptionActive,
+  isTrialing,
+  marketplaceStats,
+  subscriptionPriceLabel,
+} from "@/lib/subscription";
 
 export default async function PaymentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ settled?: string }>;
+  searchParams: Promise<{ settled?: string; subscribed?: string; cancelled?: string }>;
 }) {
   const user = await getSession();
   if (!user) redirect("/login?next=/professional/payments");
   const query = await searchParams;
+  await expireEndedTrials();
   const link = await prisma.businessUser.findFirst({
     where: { profileId: user.id },
     include: {
       business: {
         include: {
-          outstanding: { include: { lead: true } },
+          subscription: true,
           payments: { orderBy: { createdAt: "desc" } },
         },
       },
     },
   });
   if (!link) redirect("/professional");
-  const open = link.business.outstanding.find((row) => row.status === "OPEN");
+  const periodEnd = link.business.subscription?.currentPeriodEnd ?? null;
+  const subscribed = isSubscriptionActive(link.business.paymentState, periodEnd);
+  const trial = isTrialing(link.business.paymentState, periodEnd);
+  const stats = await marketplaceStats(link.businessId);
+  const daysLeft = daysRemaining(periodEnd);
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="serif text-4xl">Payments</h1>
-      {query.settled ? <p className="card mt-4 p-4">That lead is settled. Confirm whether you are available now.</p> : null}
-      {open ? (
-        <form action={payOutstanding} className="card mt-6 p-5">
-          <p className="serif text-2xl">Settle this lead to continue</p>
-          <p className="mt-2 text-ink-soft">{formatMoney(open.amountMinor, open.currency)}</p>
-          <button className="btn btn-primary mt-4" type="submit">
-            Pay
-          </button>
-        </form>
-      ) : (
-        <p className="mt-4 text-ink-soft">No outstanding lead.</p>
-      )}
+      <h1 className="serif text-4xl">Subscription</h1>
+      {query.subscribed ? (
+        <p className="card mt-4 p-4">Your monthly listing is active. Customers can now call you from 1mileaway.</p>
+      ) : null}
+      {query.cancelled ? <p className="card mt-4 p-4">Checkout was cancelled. You can start again whenever you are ready.</p> : null}
+
+      <section className="mt-6 grid gap-3 sm:grid-cols-3">
+        <div className="card p-5">
+          <p className="text-sm text-ink-soft">Calls through the app</p>
+          <p className="serif mt-1 text-3xl">{stats.totalCalls}</p>
+        </div>
+        <div className="card p-5">
+          <p className="text-sm text-ink-soft">Last 30 days</p>
+          <p className="serif mt-1 text-3xl">{stats.callsLast30}</p>
+        </div>
+        <div className="card p-5">
+          <p className="text-sm text-ink-soft">Asked, not connected</p>
+          <p className="serif mt-1 text-3xl">{stats.asks}</p>
+        </div>
+      </section>
+
+      <section className="card mt-6 p-5">
+        {trial ? (
+          <>
+            <p className="serif text-2xl">Two-month free trial</p>
+            <p className="mt-2 text-ink-soft">
+              Call now is on until {periodEnd ? formatLocalDateTime(periodEnd) : "your trial ends"}
+              {daysLeft != null ? ` (${daysLeft} days left)` : ""}. 1mileaway has sent you {stats.totalCalls} calls so
+              far. After the trial, {subscriptionPriceLabel()} keeps that going.
+            </p>
+            <form action={startSubscription} className="mt-4">
+              <button className="btn btn-primary" type="submit">
+                Continue for {subscriptionPriceLabel()}
+              </button>
+            </form>
+          </>
+        ) : subscribed ? (
+          <>
+            <p className="serif text-2xl">Active</p>
+            <p className="mt-2 text-ink-soft">
+              You pay {subscriptionPriceLabel()} to appear with Call now. Customers ring your own number.
+              {periodEnd ? ` Current period ends ${formatLocalDateTime(periodEnd)}.` : ""}
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="serif text-2xl">Keep the calls coming</p>
+            <p className="mt-2 text-ink-soft">
+              During your trial 1mileaway sent you {stats.totalCalls} calls. Subscribe for {subscriptionPriceLabel()} to
+              turn Call now back on. No per-lead bill.
+            </p>
+            <form action={startSubscription} className="mt-4">
+              <button className="btn btn-primary" type="submit">
+                Subscribe
+              </button>
+            </form>
+          </>
+        )}
+      </section>
+
       <ul className="mt-8 grid gap-2">
         {link.business.payments.map((payment) => (
           <li key={payment.id} className="card p-4 text-sm">
-            {payment.status} · {formatMoney(payment.amountMinor, payment.currency)}
+            {payment.kind} · {payment.status} · {formatMoney(payment.amountMinor, payment.currency)}
           </li>
         ))}
       </ul>

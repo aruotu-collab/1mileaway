@@ -1,10 +1,12 @@
 import { prisma } from "@/lib/db";
-import { APP_URL, CLAIM_STATUS, OUTREACH, ROLES } from "@/lib/constants";
+import { APP_URL, CLAIM_STATUS, OUTREACH, PAYMENT_STATES, ROLES } from "@/lib/constants";
 import { hashToken, randomToken } from "@/lib/utils";
 import { sendEmail, claimInviteHtml, listingInviteHtml } from "@/lib/email/adapter";
 import { writeAudit } from "@/lib/admin/audit";
-import { resolveTrialAllowance } from "@/lib/leads/lifecycle";
 import { isEmailSuppressed, markOutreachAfterInvite, unsubscribeUrl } from "@/lib/outreach/engine";
+import { startListingTrial } from "@/lib/subscription";
+import { replaceBusinessProfessions } from "@/lib/listings/professions";
+import { uniqueProfessionIds } from "@/lib/professions";
 
 export async function inviteUnclaimedBusiness(input: {
   businessId: string;
@@ -114,7 +116,12 @@ export async function inviteUnclaimedBusiness(input: {
   return { claimToken, alreadyInvited: false as const };
 }
 
-export async function completeClaim(input: { token: string; profileId: string; email: string }) {
+export async function completeClaim(input: {
+  token: string;
+  profileId: string;
+  email: string;
+  professionIds?: string[];
+}) {
   const row = await prisma.actionToken.findUnique({
     where: { tokenHash: hashToken(input.token) },
     include: { business: true },
@@ -130,38 +137,50 @@ export async function completeClaim(input: { token: string; profileId: string; e
     throw new Error("Sign in with the work email this listing was invited to.");
   }
 
-  const remaining = await resolveTrialAllowance(row.businessId);
   await prisma.$transaction([
     prisma.actionToken.update({
       where: { id: row.id },
       data: { usedAt: new Date() },
     }),
-    prisma.business.update({
-      where: { id: row.businessId },
-      data: { claimStatus: CLAIM_STATUS.CLAIMED, outreachStatus: OUTREACH.COMPLETE, outreachNextAt: null },
-    }),
-    prisma.profile.update({
-      where: { id: input.profileId },
-      data: { role: ROLES.professional },
-    }),
-    prisma.businessUser.upsert({
-      where: { businessId_profileId: { businessId: row.businessId, profileId: input.profileId } },
-      create: { businessId: row.businessId, profileId: input.profileId, role: "owner" },
-      update: { role: "owner" },
-    }),
-    prisma.trialBalance.upsert({
-      where: { businessId: row.businessId },
-      create: { businessId: row.businessId, remaining, used: 0 },
-      update: {},
-    }),
   ]);
+
+  await activateClaimedListing({ businessId: row.businessId, profileId: input.profileId });
+  const professionIds = uniqueProfessionIds(input.professionIds ?? []);
+  if (professionIds.length) {
+    await replaceBusinessProfessions(row.businessId, professionIds);
+  }
 
   await writeAudit({
     actorId: input.profileId,
     action: "claim.completed",
     entityType: "business",
     entityId: row.businessId,
+    metadata: professionIds.length ? { professionIds } : undefined,
   });
 
   return row.businessId;
+}
+
+export async function activateClaimedListing(input: { businessId: string; profileId: string }) {
+  await prisma.$transaction([
+    prisma.business.update({
+      where: { id: input.businessId },
+      data: {
+        claimStatus: CLAIM_STATUS.CLAIMED,
+        outreachStatus: OUTREACH.COMPLETE,
+        outreachNextAt: null,
+        paymentState: PAYMENT_STATES.SUBSCRIPTION_TRIALING,
+      },
+    }),
+    prisma.profile.update({
+      where: { id: input.profileId },
+      data: { role: ROLES.professional },
+    }),
+    prisma.businessUser.upsert({
+      where: { businessId_profileId: { businessId: input.businessId, profileId: input.profileId } },
+      create: { businessId: input.businessId, profileId: input.profileId, role: "owner" },
+      update: { role: "owner" },
+    }),
+  ]);
+  await startListingTrial(input.businessId);
 }

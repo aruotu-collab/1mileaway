@@ -11,7 +11,7 @@ function listing(partial: Partial<Rankable> & Pick<Rankable, "id" | "name">): Ra
     ratingAvg: 4,
     ratingCount: 4,
     claimStatus: "CLAIMED",
-    paymentState: "FREE_TRIAL_ACTIVE",
+    paymentState: "SUBSCRIPTION_ACTIVE",
     sponsoredUntil: null,
     rankingBoost: 0,
     rankingBoostUntil: null,
@@ -62,5 +62,22 @@ describe("rankListings", () => {
       }),
     ]);
     expect(ranked[0].id).toBe("fresh");
+  });
+
+  it("does not trust an answer rate until five reports exist", () => {
+    const ranked = rankListings([
+      listing({ id: "new", name: "New", answerRate: 1, answerReports: 2 }),
+      listing({ id: "proven", name: "Proven", answerRate: 0.8, answerReports: 10 }),
+    ]);
+    expect(ranked[0].id).toBe("proven");
+  });
+
+  it("treats a live trial as reliable as a paid listing", () => {
+    const ranked = rankListings([
+      listing({ id: "trial", name: "Trial", paymentState: "SUBSCRIPTION_TRIALING" }),
+      listing({ id: "off", name: "Off", paymentState: "UNSUBSCRIBED" }),
+    ]);
+    expect(ranked[0].id).toBe("trial");
+    expect(ranked[0].explanation.reliability).toBe(0.9);
   });
 });

@@ -51,7 +51,8 @@ export default async function AdminProfessionalsPage({
         <h2 className="serif text-2xl">Import listings from CSV</h2>
         <p className="text-sm text-ink-soft">
           Columns: name, email, profession, location, website, phone, about, source. Profession is an id such as
-          plumber. Location is a slug such as catford. Email is optional — rows without one are listed but not emailed.
+          plumber, mobile_tyre or mobile_laundry. Location is a slug such as catford. Email is optional — rows without
+          one are listed but not emailed.
           Only import contacts you are allowed to use.
         </p>
         <label>

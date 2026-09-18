@@ -6,10 +6,9 @@ Domain logic lives under `src/lib`:
 
 - `auth` — magic-link sessions and server-side roles
 - `availability` — statuses, expiry, email tokens
-- `leads` — qualification, trial, trust lead
-- `payments` — Stripe or mock checkout
-- `email` — Resend or mock
-- `calls` — customer taps Call now and rings the professional’s number directly
+- `leads` — call log and join-from-demand enquiries
+- `payments` — monthly subscription (Stripe or mock)
+- `subscription` — two-month trial, call statistics, expiry emails
 - `ranking` — recommended sort + admin explanation
 - `seo` — indexability
 - `locations` — marketplace queries

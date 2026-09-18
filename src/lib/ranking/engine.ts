@@ -1,5 +1,6 @@
 import { AVAILABILITY, CLAIM_STATUS, PAYMENT_STATES } from "@/lib/constants";
 import { isAvailabilityLive } from "@/lib/availability/engine";
+import { rankingAnswerScore } from "@/lib/reputation";
 
 export type Rankable = {
   id: string;
@@ -9,6 +10,7 @@ export type Rankable = {
   availabilityExpiresAt: Date | null;
   availabilityConfirmedAt: Date | null;
   answerRate: number;
+  answerReports?: number;
   ratingAvg: number;
   ratingCount: number;
   claimStatus: string;
@@ -48,11 +50,15 @@ export function rankListings<T extends Rankable>(items: T[], now = new Date()): 
       const distance =
         item.distanceMiles <= 1 ? 1 : item.distanceMiles <= 3 ? 0.78 : item.distanceMiles <= 8 ? 0.45 : 0.2;
 
-      const answer = clamp(item.answerRate);
+      const answer = rankingAnswerScore(item.answerRate, item.answerReports);
       const rating = item.ratingCount > 0 ? clamp(item.ratingAvg / 5) : 0.35;
       const verified = item.claimStatus === CLAIM_STATUS.VERIFIED ? 1 : item.claimStatus === CLAIM_STATUS.CLAIMED ? 0.55 : 0.2;
       const quality = clamp((item.about ? 0.5 : 0.2) + (item.photoUrl ? 0.5 : 0.15));
-      const reliability = item.paymentState === PAYMENT_STATES.OUTSTANDING_LEAD ? 0.25 : 0.8;
+      const reliability =
+        item.paymentState === PAYMENT_STATES.SUBSCRIPTION_ACTIVE ||
+        item.paymentState === PAYMENT_STATES.SUBSCRIPTION_TRIALING
+          ? 0.9
+          : 0.35;
       const sponsored = Boolean(item.sponsoredUntil && item.sponsoredUntil > now);
       const override = item.rankingBoostUntil && item.rankingBoostUntil > now ? item.rankingBoost : 0;
 

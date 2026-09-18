@@ -4,12 +4,12 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { createSession, destroySession, upsertProfile } from "@/lib/auth/session";
 import { sendEmail, magicLinkHtml } from "@/lib/email/adapter";
-import { hashToken, randomToken } from "@/lib/utils";
+import { hashToken, randomToken, safeNextPath } from "@/lib/utils";
 import { writeAudit } from "@/lib/admin/audit";
 
 export async function requestMagicLink(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const next = String(formData.get("next") ?? "/professional");
+  const next = safeNextPath(String(formData.get("next") ?? "/professional"));
   if (!email.includes("@")) {
     redirect(`/login?error=invalid-email&next=${encodeURIComponent(next)}`);
   }
@@ -32,7 +32,7 @@ export async function requestMagicLink(formData: FormData) {
     to: email,
     template: "magic_link",
     subject: "Your 1mileaway sign-in link",
-    html: magicLinkHtml(token),
+    html: magicLinkHtml(token, next),
     payload: { token: process.env.RESEND_API_KEY ? undefined : token },
   });
 
@@ -42,6 +42,7 @@ export async function requestMagicLink(formData: FormData) {
 }
 
 export async function consumeMagicToken(token: string, next = "/professional") {
+  next = safeNextPath(next);
   const row = await prisma.magicLink.findUnique({ where: { tokenHash: hashToken(token) } });
   if (!row || row.usedAt || row.expiresAt < new Date()) {
     redirect("/login?error=expired");

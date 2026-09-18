@@ -97,6 +97,7 @@ export async function listingsFor(input: {
       locations: { include: { location: true } },
       professions: { include: { profession: true } },
       verifications: true,
+      subscription: true,
     },
   });
 

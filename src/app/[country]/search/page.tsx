@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { SearchBox } from "@/components/search-box";
+import { MarketplaceSearch } from "@/components/marketplace-search";
 
 export default async function SearchPage({
   params,
@@ -38,7 +38,7 @@ export default async function SearchPage({
     <main className="mx-auto max-w-4xl px-4 py-8">
       <h1 className="serif text-4xl">Search {countryRow?.name ?? ""}</h1>
       <div className="mt-6">
-        <SearchBox
+        <MarketplaceSearch
           country={country}
           defaultProfession={query.profession ?? "plumbers"}
           defaultLocation={query.location ?? ""}

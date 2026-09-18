@@ -149,7 +149,7 @@ model Business {
   name         String
   countryId    String
   claimStatus  String    @default("UNCLAIMED")
-  paymentState String    @default("FREE_TRIAL_ACTIVE")
+  paymentState String    @default("UNSUBSCRIBED")
   phoneDisplay String?
   phoneReal    String?
   contactEmail String?
@@ -164,6 +164,7 @@ model Business {
   ratingAvg    Float     @default(0)
   ratingCount  Int       @default(0)
   answerRate   Float     @default(0)
+  answerReports Int      @default(0)
   sponsoredUntil DateTime?
   rankingBoost   Float     @default(0)
   rankingBoostUntil DateTime?
@@ -185,6 +186,7 @@ model Business {
   trialBalance TrialBalance?
   outstanding  OutstandingLeadBalance[]
   payments     Payment[]
+  subscription Subscription?
   reviews      Review[]
   actionTokens ActionToken[]
   emails       EmailMessage[]
@@ -278,6 +280,7 @@ model Call {
   trackingNumber TrackingNumber? @relation(fields: [trackingNumberId], references: [id])
   events         CallEvent[]
   lead           Lead?
+  review         Review?
 
   @@index([businessId, startedAt])
 }
@@ -368,10 +371,26 @@ model OutstandingLeadBalance {
   @@index([businessId, status])
 }
 
+model Subscription {
+  id                     String    @id @default(uuid())
+  businessId             String    @unique
+  status                 String    @default("none")
+  amountMinor            Int
+  currency               String
+  currentPeriodEnd       DateTime?
+  provider               String    @default("mock")
+  providerCustomerId     String?
+  providerSubscriptionId String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  business               Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
 model Payment {
   id          String   @id @default(uuid())
   businessId  String
-  leadId      String
+  leadId      String?
+  kind        String   @default("lead")
   provider    String
   providerRef String?  @unique
   amountMinor Int
@@ -380,7 +399,7 @@ model Payment {
   createdAt   DateTime @default(now())
   settledAt   DateTime?
   business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  lead        Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
   events      PaymentEvent[]
 }
 
@@ -396,12 +415,14 @@ model PaymentEvent {
 model Review {
   id         String   @id @default(uuid())
   businessId String
+  callId     String?  @unique
   rating     Int
   body       String?
   source     String   @default("interaction")
   published  Boolean  @default(true)
   createdAt  DateTime @default(now())
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  call       Call?    @relation(fields: [callId], references: [id], onDelete: SetNull)
 }
 
 model EmailMessage {

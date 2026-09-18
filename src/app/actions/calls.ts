@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { startDirectCall } from "@/lib/calls/adapter";
+import { startDirectCall, requestTradesman } from "@/lib/calls/adapter";
 import { qualifyLead, rejectLead } from "@/lib/leads/lifecycle";
 import { trackEvent } from "@/lib/admin/audit";
 import { getSession } from "@/lib/auth/session";
@@ -14,14 +14,34 @@ export async function startCall(formData: FormData) {
   const locationId = String(formData.get("locationId") ?? "") || undefined;
   const country = String(formData.get("country") ?? "gb");
   const returnTo = String(formData.get("returnTo") ?? "");
+  const skipBusinessIds = String(formData.get("skip") ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
   if (!businessId) redirect("/");
-  const { call, reason } = await startDirectCall({ businessId, professionId, locationId });
+  const { call, reason } = await startDirectCall({
+    businessId,
+    professionId,
+    locationId,
+    skipBusinessIds,
+  });
   if (!call) {
     const fallback = returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : `/${country}`;
     redirect(`${fallback}${fallback.includes("?") ? "&" : "?"}callError=${reason ?? "no_direct_number"}`);
   }
   await trackEvent("call_started", `/${country}`, { businessId, callId: call.id });
   redirect(`/call/${call.id}`);
+}
+
+export async function askTradesman(formData: FormData) {
+  const businessId = String(formData.get("businessId") ?? "");
+  const professionId = String(formData.get("professionId") ?? "") || undefined;
+  const locationId = String(formData.get("locationId") ?? "") || undefined;
+  const returnTo = String(formData.get("returnTo") ?? "");
+  if (!businessId) redirect("/");
+  await requestTradesman({ businessId, professionId, locationId });
+  const fallback = returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/";
+  redirect(`${fallback}${fallback.includes("?") ? "&" : "?"}asked=1`);
 }
 
 async function ownedLead(leadId: string) {

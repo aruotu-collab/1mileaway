@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { createOwnListing } from "@/app/actions/join";
+import { ProfessionPicker } from "@/components/profession-picker";
+import { listProfessionPicks } from "@/lib/listings/professions";
 
 export default async function JoinPage({
   searchParams,
@@ -9,11 +11,7 @@ export default async function JoinPage({
 }) {
   const query = await searchParams;
   const [professions, locations] = await Promise.all([
-    prisma.profession.findMany({
-      where: { active: true },
-      include: { slugs: true },
-      orderBy: { internalId: "asc" },
-    }),
+    listProfessionPicks(),
     prisma.location.findMany({
       where: { country: { iso2: "gb" }, type: "district", active: true },
       orderBy: { name: "asc" },
@@ -25,9 +23,11 @@ export default async function JoinPage({
     professions.find(
       (profession) =>
         profession.id === query.profession ||
-        profession.internalId === professionKey ||
-        profession.slugs.some((slug) => slug.slug === professionKey || slug.emergencySlug === professionKey),
-    ) ?? professions[0];
+        profession.slug === professionKey ||
+        profession.label.toLowerCase() === professionKey,
+    ) ??
+    professions.find((profession) => profession.slug === "plumbers") ??
+    professions[0];
   const selectedLocation =
     locations.find(
       (location) => location.id === query.location || location.slug === locationKey || location.name.toLowerCase() === locationKey,
@@ -37,9 +37,10 @@ export default async function JoinPage({
     <main className="mx-auto max-w-md px-4 py-12">
       <h1 className="serif text-4xl">Join 1mileaway</h1>
       <p className="mt-3 text-ink-soft">
-        Create your listing with your own work email. We do not collect contact details from other websites.
+        Create your listing with your own work email. You get two months free — we count every customer call so you can
+        see if it is worth paying for. We do not collect contact details from other websites.
       </p>
-      {query.error ? <p className="mt-3 text-rust">Please fill in every field.</p> : null}
+      {query.error ? <p className="mt-3 text-rust">Please fill in every field, including at least one trade.</p> : null}
       <form action={createOwnListing} className="card mt-6 grid gap-3 p-5">
         <label>
           <span className="mb-1 block text-sm font-medium">Business name</span>
@@ -50,21 +51,11 @@ export default async function JoinPage({
             required
           />
         </label>
-        <label>
-          <span className="mb-1 block text-sm font-medium">Profession</span>
-          <select
-            className="w-full rounded-2xl border border-line bg-paper px-4 py-3"
-            name="professionId"
-            defaultValue={selectedProfession?.id}
-            required
-          >
-            {professions.map((profession) => (
-              <option key={profession.id} value={profession.id}>
-                {profession.internalId}
-              </option>
-            ))}
-          </select>
-        </label>
+        <fieldset>
+          <legend className="mb-1 block text-sm font-medium">Trades you do</legend>
+          <p className="mb-2 text-sm text-ink-soft">Tick every profession customers should find you under.</p>
+          <ProfessionPicker professions={professions} selectedIds={selectedProfession ? [selectedProfession.id] : []} />
+        </fieldset>
         <label>
           <span className="mb-1 block text-sm font-medium">Main area</span>
           <select
