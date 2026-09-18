@@ -59,7 +59,7 @@ npm test
 - [Architecture](docs/ARCHITECTURE.md)
 - [Lead lifecycle](docs/LEAD-LIFECYCLE.md)
 - [Availability](docs/AVAILABILITY.md)
-- [SEO](docs/SEO.md)
+- [SEO](docs/SEO.md) — Google Analytics and Search Console
 - [Payments](docs/PAYMENTS.md)
 - [Email](docs/EMAIL.md)
 - [Admin](docs/ADMIN.md)
