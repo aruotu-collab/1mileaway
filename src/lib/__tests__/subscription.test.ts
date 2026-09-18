@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { daysRemaining, isSubscriptionActive, isTrialing, trialEndFrom } from "@/lib/subscription";
+import { daysRemaining, isSubscriptionActive, isTrialing, stripeTrialEndUnix, SUBSCRIPTION_CURRENCY, trialEndFrom } from "@/lib/subscription";
+
+describe("billing", () => {
+  it("charges one USD price in every country", () => {
+    expect(SUBSCRIPTION_CURRENCY).toBe("USD");
+  });
+});
 
 describe("isSubscriptionActive", () => {
   it("treats paid and unexpired trials as callable", () => {
@@ -30,5 +36,15 @@ describe("daysRemaining", () => {
   it("counts whole days left", () => {
     expect(daysRemaining(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000))).toBeGreaterThanOrEqual(3);
     expect(daysRemaining(new Date(Date.now() - 1000))).toBe(0);
+  });
+});
+
+describe("stripeTrialEndUnix", () => {
+  it("only sends Stripe a trial end when two days remain", () => {
+    const now = new Date("2026-09-18T12:00:00Z");
+    expect(stripeTrialEndUnix(new Date("2026-09-19T12:00:00Z"), now)).toBeNull();
+    expect(stripeTrialEndUnix(new Date("2026-11-18T12:00:00Z"), now)).toBe(
+      Math.floor(new Date("2026-11-18T12:00:00Z").getTime() / 1000),
+    );
   });
 });

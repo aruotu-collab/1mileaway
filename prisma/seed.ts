@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { createHash } from "crypto";
+import { LAUNCH_COUNTRIES } from "../src/lib/countries/catalog";
 import { ensureProfessionCatalog } from "../src/lib/profession-catalog";
 
 const prisma = new PrismaClient();
@@ -48,21 +49,21 @@ async function main() {
   await prisma.country.deleteMany();
   await prisma.setting.deleteMany();
 
-  const countries = await Promise.all(
-    [
-      { iso2: "gb", name: "United Kingdom", currency: "GBP", locale: "en-GB", timezone: "Europe/London", active: true, tier: 1 },
-      { iso2: "us", name: "United States", currency: "USD", locale: "en-US", timezone: "America/Chicago", active: true, tier: 1 },
-      { iso2: "ca", name: "Canada", currency: "CAD", locale: "en-CA", timezone: "America/Toronto", active: true, tier: 1 },
-      { iso2: "au", name: "Australia", currency: "AUD", locale: "en-AU", timezone: "Australia/Sydney", active: true, tier: 1 },
-      { iso2: "nz", name: "New Zealand", currency: "NZD", locale: "en-NZ", timezone: "Pacific/Auckland", active: true, tier: 1 },
-      { iso2: "ie", name: "Ireland", currency: "EUR", locale: "en-IE", timezone: "Europe/Dublin", active: true, tier: 1 },
-      { iso2: "de", name: "Germany", currency: "EUR", locale: "de-DE", timezone: "Europe/Berlin", active: false, tier: 2 },
-      { iso2: "fr", name: "France", currency: "EUR", locale: "fr-FR", timezone: "Europe/Paris", active: false, tier: 2 },
-      { iso2: "nl", name: "Netherlands", currency: "EUR", locale: "nl-NL", timezone: "Europe/Amsterdam", active: false, tier: 2 },
-    ].map((c) => prisma.country.create({ data: c })),
-  );
-  const gb = countries.find((c) => c.iso2 === "gb")!;
-  const us = countries.find((c) => c.iso2 === "us")!;
+  for (const country of LAUNCH_COUNTRIES) {
+    await prisma.country.create({
+      data: {
+        iso2: country.iso2,
+        name: country.name,
+        currency: country.localCurrency,
+        locale: country.locale,
+        timezone: country.timezone,
+        active: country.iso2 === "gb",
+        tier: country.launchOrder,
+      },
+    });
+  }
+  const gb = await prisma.country.findUniqueOrThrow({ where: { iso2: "gb" } });
+  const us = await prisma.country.findUniqueOrThrow({ where: { iso2: "us" } });
 
   await ensureProfessionCatalog(prisma);
   const plumber = await prisma.profession.findUniqueOrThrow({ where: { internalId: "plumber" } });

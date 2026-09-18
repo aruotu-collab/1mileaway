@@ -1,4 +1,5 @@
 import { requestMagicLink } from "@/app/actions/auth";
+import { BackLink } from "@/components/back-link";
 import { prisma } from "@/lib/db";
 
 export default async function LoginPage({
@@ -23,6 +24,11 @@ export default async function LoginPage({
 
   return (
     <main className="mx-auto max-w-md px-4 py-16">
+      <p className="mb-4">
+        <BackLink href="/" className="text-sm font-medium text-moss-deep hover:underline">
+          ← Home
+        </BackLink>
+      </p>
       <h1 className="serif text-4xl">Sign in</h1>
       <p className="mt-3 text-ink-soft">
         {resendConfigured

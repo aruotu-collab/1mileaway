@@ -3,6 +3,7 @@ export const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000
 
 export const SESSION_COOKIE = "oma_session";
 export const SESSION_DAYS = 14;
+export const COUNTRY_COOKIE = "oma_country";
 
 export const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS ?? "aruotu@gmail.com")
   .split(",")

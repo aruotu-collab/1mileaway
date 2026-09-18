@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 
 type Tab = {
@@ -9,8 +11,8 @@ type Tab = {
 
 function TabButton({ tab }: { tab: Tab }) {
   const className = tab.selected
-    ? "flex-1 rounded-full px-4 py-2.5 text-center text-sm font-semibold bg-ink text-paper-strong"
-    : "flex-1 rounded-full px-4 py-2.5 text-center text-sm font-semibold text-ink-soft hover:text-ink";
+    ? "flex min-w-0 flex-1 items-center justify-center rounded-full px-2 py-2.5 text-center text-xs font-semibold bg-ink text-paper-strong sm:px-4 sm:text-sm"
+    : "flex min-w-0 flex-1 items-center justify-center rounded-full px-2 py-2.5 text-center text-xs font-semibold text-ink-soft hover:text-ink sm:px-4 sm:text-sm";
 
   if (tab.href) {
     return (
@@ -42,11 +44,11 @@ export function UrgencyTabs({
     <div
       role="tablist"
       aria-label="Urgency"
-      className="grid grid-cols-2 rounded-full border border-line bg-paper p-1"
+      className="grid min-w-0 grid-cols-2 rounded-full border border-line bg-paper p-1"
     >
       <TabButton
         tab={{
-          label: "Nearest to you",
+          label: "Nearest",
           selected: !emergency,
           href: regularHref,
           onSelect: onChange ? () => onChange(false) : undefined,

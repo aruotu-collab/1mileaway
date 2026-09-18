@@ -12,7 +12,7 @@ import type { MarketplaceStats } from "@/lib/listing-insights";
 export type { MarketplaceStats } from "@/lib/listing-insights";
 
 export const SUBSCRIPTION_AMOUNT_MINOR = Number(process.env.SUBSCRIPTION_AMOUNT_MINOR ?? 2900);
-export const SUBSCRIPTION_CURRENCY = (process.env.SUBSCRIPTION_CURRENCY ?? "GBP").toUpperCase();
+export const SUBSCRIPTION_CURRENCY = (process.env.SUBSCRIPTION_CURRENCY ?? "USD").toUpperCase();
 export const TRIAL_MONTHS = 2;
 
 export function isSubscriptionActive(paymentState: string, periodEnd?: Date | null) {
@@ -26,8 +26,13 @@ export function isTrialing(paymentState: string, periodEnd?: Date | null) {
   return paymentState === PAYMENT_STATES.SUBSCRIPTION_TRIALING && isSubscriptionActive(paymentState, periodEnd);
 }
 
+export function billedAmountLabel() {
+  const locale = SUBSCRIPTION_CURRENCY === "USD" ? "en-US" : "en-GB";
+  return formatMoney(SUBSCRIPTION_AMOUNT_MINOR, SUBSCRIPTION_CURRENCY, locale);
+}
+
 export function subscriptionPriceLabel() {
-  return `${formatMoney(SUBSCRIPTION_AMOUNT_MINOR, SUBSCRIPTION_CURRENCY)} a month`;
+  return `${billedAmountLabel()} a month`;
 }
 
 export function trialEndFrom(now = new Date()) {
@@ -39,6 +44,18 @@ export function trialEndFrom(now = new Date()) {
 export function daysRemaining(periodEnd?: Date | null, now = new Date()) {
   if (!periodEnd) return null;
   return Math.max(0, Math.ceil((periodEnd.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)));
+}
+
+const STRIPE_MIN_TRIAL_MS = 48 * 60 * 60 * 1000;
+
+export function stripeTrialEndUnix(periodEnd?: Date | null, now = new Date()) {
+  if (!periodEnd) return null;
+  if (periodEnd.getTime() - now.getTime() < STRIPE_MIN_TRIAL_MS) return null;
+  return Math.floor(periodEnd.getTime() / 1000);
+}
+
+export function hasStripeBilling(provider?: string | null, subscriptionId?: string | null) {
+  return provider === "stripe" && Boolean(subscriptionId);
 }
 
 async function hasTemplate(businessId: string, template: EmailTemplate) {
@@ -177,6 +194,7 @@ export async function expireEndedTrials(now = new Date()) {
   });
 
   for (const row of ended) {
+    if (hasStripeBilling(row.provider, row.providerSubscriptionId)) continue;
     const stats = await marketplaceStats(row.businessId);
     await prisma.$transaction([
       prisma.subscription.update({

@@ -2,18 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { MarketplaceSearch } from "@/components/marketplace-search";
-import { UrgencyTabs } from "@/components/urgency-tabs";
 import { ListingCard } from "@/components/listing-card";
 import { AddYourBusinessCta } from "@/components/claim-listing-cta";
-import { PhoneIcon } from "@/components/phone-icon";
-import { askTradesman, startCall } from "@/app/actions/calls";
+import { BackLink } from "@/components/back-link";
 import { listingCallOptions } from "@/lib/phone";
 import { getActiveCountry, getLocationBySlug, getProfessionBySlug, listingsFor, nearbyLocations } from "@/lib/locations/service";
 import { isIndexable, robotsDirective } from "@/lib/seo/indexability";
 import { prisma } from "@/lib/db";
 import { AVAILABILITY } from "@/lib/constants";
-import { activityHeadlines, activitySnapshot } from "@/lib/activity";
-import { ActivityTape } from "@/components/activity-tape";
+import { withQuery } from "@/lib/navigation";
 
 type Params = { country: string; profession: string; location: string };
 
@@ -70,6 +67,7 @@ export default async function LocationProfessionPage({
     lat?: string;
     lng?: string;
     asked?: string;
+    callError?: string;
   }>;
 }) {
   const { country, profession, location } = await params;
@@ -89,12 +87,13 @@ export default async function LocationProfessionPage({
     Number.isFinite(visitorLat) && Number.isFinite(visitorLng) && query.lat && query.lng
       ? { lat: visitorLat, lng: visitorLng }
       : null;
-  const visitorQuery = new URLSearchParams();
-  if (query.near) visitorQuery.set("near", query.near);
-  if (query.lat) visitorQuery.set("lat", query.lat);
-  if (query.lng) visitorQuery.set("lng", query.lng);
-  const visitorSuffix = visitorQuery.toString();
-  const withVisitor = (href: string) => (visitorSuffix ? `${href}${href.includes("?") ? "&" : "?"}${visitorSuffix}` : href);
+  const visitorParams = {
+    near: query.near,
+    lat: query.lat,
+    lng: query.lng,
+  };
+  const withVisitor = (path: string, extra: Record<string, string | undefined> = {}) =>
+    withQuery(path, { ...visitorParams, ...extra });
 
   const listings = await listingsFor({
     countryId: countryRow.id,
@@ -113,37 +112,47 @@ export default async function LocationProfessionPage({
 
   const nearby = await nearbyLocations(locationRow.id);
   const availableNow = listings.filter((l) => l.availabilityStatus === AVAILABILITY.AVAILABLE_NOW).length;
-  const featured = listings[0];
   const resultsHref = withVisitor(`/${country}/${profession}/${location}`);
-  const tape = activityHeadlines(
-    await activitySnapshot({
-      countryId: countryRow.id,
-      timezone: countryRow.timezone,
-      professionId: professionRow.professionId,
-      locationId: locationRow.id,
-      professionName: professionRow.name,
-      professionPlural: professionRow.pluralName,
-      locationName: locationRow.name,
-      availableNow,
-      listingCount: listings.length,
-    }),
-  );
+  const sort = query.sort ?? (emergency ? "available" : "recommended");
+  const filterClass = (active: boolean) =>
+    active
+      ? "rounded-full bg-ink px-3 py-2 text-paper-strong"
+      : "rounded-full border border-line px-3 py-2";
 
   return (
-    <>
-      <ActivityTape items={tape} />
-      <main className="mx-auto max-w-6xl px-4 py-8">
+    <main className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
       <p className="text-sm text-ink-soft">
-        <Link href="/">Home</Link> / {countryRow.name} / {professionRow.pluralName}
+        <BackLink href="/" className="font-medium text-moss-deep hover:underline">
+          ← Home
+        </BackLink>
+        {" / "}
+        {countryRow.name} / {professionRow.pluralName}
       </p>
-      <h1 className="serif mt-3 text-3xl leading-tight sm:text-4xl">
+
+      <div className="mt-4" id="search">
+        <MarketplaceSearch
+          key={`${profession}:${location}:${query.near ?? ""}`}
+          country={country}
+          defaultProfession={professionRow.slug}
+          defaultLocation={query.near ?? locationRow.name}
+          emergency={emergency}
+          regularHref={withVisitor(`/${country}/${professionRow.slug}/${location}`)}
+          emergencyHref={
+            professionRow.emergencySlug
+              ? withVisitor(`/${country}/${professionRow.emergencySlug}/${location}`)
+              : withVisitor(`/${country}/${professionRow.slug}/${location}`, { sort: "available" })
+          }
+        />
+      </div>
+
+      <h1 className="serif mt-6 text-3xl leading-tight sm:text-4xl">
         {emergency ? "Emergency " : ""}
         {professionRow.pluralName} in {locationRow.name}
       </h1>
-      <p className="mt-4 text-lg text-ink-soft">
-        {listings.length} serve {locationRow.name}
-        {availableNow ? ` · ${availableNow} recently available` : ""}
-        {query.near ? ` · distances from ${query.near}` : ""}
+      <p className="mt-3 text-base text-ink-soft sm:text-lg">
+        {listings.length === 0
+          ? `Nobody is listed for ${locationRow.name} yet. Try a nearby area or another trade.`
+          : `${listings.length} serve ${locationRow.name}${availableNow ? ` · ${availableNow} recently available` : ""}${query.near ? ` · distances from ${query.near}` : ""}`}
       </p>
       {query.asked === "1" ? (
         <p className="card mt-4 p-4">
@@ -151,128 +160,75 @@ export default async function LocationProfessionPage({
           on. You can still ring anyone below who is live.
         </p>
       ) : null}
-
-      {professionRow.profession.emergencyEligible && professionRow.emergencySlug ? (
-        <div className="mt-6 max-w-md">
-          <UrgencyTabs
-            emergency={emergency}
-            regularHref={withVisitor(`/${country}/${professionRow.slug}/${location}`)}
-            emergencyHref={withVisitor(`/${country}/${professionRow.emergencySlug}/${location}`)}
-          />
-        </div>
+      {query.callError ? (
+        <p className="card mt-4 p-4">
+          That number is not available through 1mileaway right now. Try the next professional below.
+        </p>
       ) : null}
 
-      <div className="mt-6">
-        <MarketplaceSearch
-          key={query.near ?? locationRow.slug}
-          country={country}
-          defaultProfession={professionRow.slug}
-          defaultLocation={query.near ?? locationRow.name}
-          emergency={emergency}
-        />
-      </div>
-
       <div className="mt-5 flex flex-wrap gap-2 text-sm">
-        <a className="rounded-full border border-line px-3 py-2" href={withVisitor("?sort=recommended")}>
+        <Link
+          className={filterClass(!query.availableNow && !query.verified && sort === "recommended")}
+          href={withVisitor(`/${country}/${profession}/${location}`, { sort: "recommended" })}
+        >
           Recommended
-        </a>
-        <a className="rounded-full border border-line px-3 py-2" href={withVisitor("?sort=nearest")}>
-          Nearest
-        </a>
-        <a className="rounded-full border border-line px-3 py-2" href={withVisitor("?availableNow=1")}>
+        </Link>
+        <Link
+          className={filterClass(sort === "nearest")}
+          href={withVisitor(`/${country}/${profession}/${location}`, { sort: "nearest" })}
+        >
+          Closest
+        </Link>
+        <Link
+          className={filterClass(query.availableNow === "1")}
+          href={withVisitor(`/${country}/${profession}/${location}`, { availableNow: "1" })}
+        >
           Available now
-        </a>
-        <a className="rounded-full border border-line px-3 py-2" href={withVisitor("?verified=1")}>
+        </Link>
+        <Link
+          className={filterClass(query.verified === "1")}
+          href={withVisitor(`/${country}/${profession}/${location}`, { verified: "1" })}
+        >
           Verified
-        </a>
+        </Link>
       </div>
 
-      {featured ? (
-        <section className="mt-8">
-          <h2 className="serif text-2xl">Start with this professional</h2>
-          <div className="mt-3">
+      {listings.length === 0 ? (
+        <div className="card mt-8 p-6">
+          <p className="font-semibold">No professionals are listed for this area yet.</p>
+          <p className="mt-2 text-ink-soft">
+            Search again with the form above, or try a nearby area. If you do this work, you can add your listing.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-8 grid gap-4">
+          {listings.map((listing, index) => (
             <ListingCard
-              featured
+              key={listing.id}
+              featured={index === 0}
               country={country}
-              slug={featured.slug}
-              name={featured.name}
-              about={featured.about}
-              distanceMiles={featured.distanceMiles}
-              availabilityStatus={featured.availabilityStatus}
-              availabilityConfirmedAt={featured.availabilityConfirmedAt}
-              answerRate={featured.answerRate}
-              answerReports={featured.answerReports}
-              ratingAvg={featured.ratingAvg}
-              ratingCount={featured.ratingCount}
-              claimStatus={featured.claimStatus}
-              sponsored={featured.sponsored}
-              businessId={featured.id}
+              slug={listing.slug}
+              name={listing.name}
+              about={listing.about}
+              distanceMiles={listing.distanceMiles}
+              availabilityStatus={listing.availabilityStatus}
+              availabilityConfirmedAt={listing.availabilityConfirmedAt}
+              answerRate={listing.answerRate}
+              answerReports={listing.answerReports}
+              ratingAvg={listing.ratingAvg}
+              ratingCount={listing.ratingCount}
+              claimStatus={listing.claimStatus}
+              sponsored={listing.sponsored}
+              businessId={listing.id}
               professionId={professionRow.professionId}
               locationId={locationRow.id}
               resultsHref={resultsHref}
               fromVisitor={Boolean(visitorOrigin)}
-              {...listingCallOptions(featured)}
+              {...listingCallOptions(listing)}
             />
-          </div>
-          {listingCallOptions(featured).phone ? (
-            <form action={startCall} className="sticky bottom-3 z-20 mt-3 sm:hidden">
-              <input type="hidden" name="businessId" value={featured.id} />
-              <input type="hidden" name="professionId" value={professionRow.professionId} />
-              <input type="hidden" name="locationId" value={locationRow.id} />
-              <input type="hidden" name="country" value={country} />
-              <input type="hidden" name="returnTo" value={resultsHref} />
-              <button className="btn btn-primary w-full shadow-lg" type="submit">
-                <PhoneIcon />
-                Call {featured.name}
-              </button>
-            </form>
-          ) : listingCallOptions(featured).canRequest ? (
-            <form action={askTradesman} className="sticky bottom-3 z-20 mt-3 sm:hidden">
-              <input type="hidden" name="businessId" value={featured.id} />
-              <input type="hidden" name="professionId" value={professionRow.professionId} />
-              <input type="hidden" name="locationId" value={locationRow.id} />
-              <input type="hidden" name="returnTo" value={resultsHref} />
-              <button className="btn btn-primary w-full shadow-lg" type="submit">
-                Ask {featured.name} to take this job
-              </button>
-            </form>
-          ) : null}
-        </section>
-      ) : (
-        <p className="card mt-8 p-6">No professionals are listed for this area yet.</p>
+          ))}
+        </div>
       )}
-
-      {listings.length > 1 ? (
-        <section className="mt-10">
-          <h2 className="serif text-2xl">See all options</h2>
-          <div className="mt-4 grid gap-4">
-            {listings.map((listing) => (
-              <ListingCard
-                key={listing.id}
-                country={country}
-                slug={listing.slug}
-                name={listing.name}
-                about={listing.about}
-                distanceMiles={listing.distanceMiles}
-                availabilityStatus={listing.availabilityStatus}
-                availabilityConfirmedAt={listing.availabilityConfirmedAt}
-                answerRate={listing.answerRate}
-                answerReports={listing.answerReports}
-                ratingAvg={listing.ratingAvg}
-                ratingCount={listing.ratingCount}
-                claimStatus={listing.claimStatus}
-                sponsored={listing.sponsored}
-                businessId={listing.id}
-                professionId={professionRow.professionId}
-                locationId={locationRow.id}
-                resultsHref={resultsHref}
-                fromVisitor={Boolean(visitorOrigin)}
-                {...listingCallOptions(listing)}
-              />
-            ))}
-          </div>
-        </section>
-      ) : null}
 
       <AddYourBusinessCta
         professionLabel={professionRow.name.toLowerCase()}
@@ -295,6 +251,5 @@ export default async function LocationProfessionPage({
         </div>
       </section>
     </main>
-    </>
   );
 }

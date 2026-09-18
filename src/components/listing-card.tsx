@@ -3,6 +3,7 @@ import { askTradesman, startCall } from "@/app/actions/calls";
 import { AvailabilityBadge } from "@/components/availability-badge";
 import { MiniRadar } from "@/components/nearby-radar";
 import { PhoneIcon } from "@/components/phone-icon";
+import { PushForm } from "@/components/push-form";
 import { AVAILABILITY } from "@/lib/constants";
 import { canShowAnswerRate } from "@/lib/reputation";
 
@@ -97,7 +98,7 @@ export function ListingCard(props: ListingCardProps) {
       ) : null}
       <div className="mt-5 flex flex-col gap-2 sm:flex-row">
         {props.phone ? (
-          <form action={startCall} className="flex-1">
+          <PushForm action={startCall} className="flex-1">
             <input type="hidden" name="businessId" value={props.businessId} />
             <input type="hidden" name="professionId" value={props.professionId ?? ""} />
             <input type="hidden" name="locationId" value={props.locationId ?? ""} />
@@ -108,9 +109,9 @@ export function ListingCard(props: ListingCardProps) {
               <PhoneIcon />
               Call now
             </button>
-          </form>
+          </PushForm>
         ) : props.canRequest ? (
-          <form action={askTradesman} className="flex-1">
+          <PushForm action={askTradesman} className="flex-1">
             <input type="hidden" name="businessId" value={props.businessId} />
             <input type="hidden" name="professionId" value={props.professionId ?? ""} />
             <input type="hidden" name="locationId" value={props.locationId ?? ""} />
@@ -118,7 +119,7 @@ export function ListingCard(props: ListingCardProps) {
             <button className="btn btn-primary w-full" type="submit">
               Ask them to take this job
             </button>
-          </form>
+          </PushForm>
         ) : (
           <p className="flex-1 rounded-2xl border border-line bg-paper px-4 py-3 text-sm text-ink-soft">
             This listing is not taking calls through 1mileaway yet.

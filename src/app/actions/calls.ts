@@ -7,8 +7,9 @@ import { qualifyLead, rejectLead } from "@/lib/leads/lifecycle";
 import { trackEvent } from "@/lib/admin/audit";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { safeInternalPath, withQuery } from "@/lib/navigation";
 
-export async function startCall(formData: FormData) {
+export async function startCall(formData: FormData): Promise<{ href: string }> {
   const businessId = String(formData.get("businessId") ?? "");
   const professionId = String(formData.get("professionId") ?? "") || undefined;
   const locationId = String(formData.get("locationId") ?? "") || undefined;
@@ -18,7 +19,7 @@ export async function startCall(formData: FormData) {
     .split(",")
     .map((id) => id.trim())
     .filter(Boolean);
-  if (!businessId) redirect("/");
+  if (!businessId) return { href: "/" };
   const { call, reason } = await startDirectCall({
     businessId,
     professionId,
@@ -26,22 +27,22 @@ export async function startCall(formData: FormData) {
     skipBusinessIds,
   });
   if (!call) {
-    const fallback = returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : `/${country}`;
-    redirect(`${fallback}${fallback.includes("?") ? "&" : "?"}callError=${reason ?? "no_direct_number"}`);
+    const fallback = safeInternalPath(returnTo, `/${country}`);
+    return { href: withQuery(fallback, { callError: reason ?? "no_direct_number" }) };
   }
   await trackEvent("call_started", `/${country}`, { businessId, callId: call.id });
-  redirect(`/call/${call.id}`);
+  return { href: `/call/${call.id}` };
 }
 
-export async function askTradesman(formData: FormData) {
+export async function askTradesman(formData: FormData): Promise<{ href: string }> {
   const businessId = String(formData.get("businessId") ?? "");
   const professionId = String(formData.get("professionId") ?? "") || undefined;
   const locationId = String(formData.get("locationId") ?? "") || undefined;
   const returnTo = String(formData.get("returnTo") ?? "");
-  if (!businessId) redirect("/");
+  if (!businessId) return { href: "/" };
   await requestTradesman({ businessId, professionId, locationId });
-  const fallback = returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/";
-  redirect(`${fallback}${fallback.includes("?") ? "&" : "?"}asked=1`);
+  const fallback = safeInternalPath(returnTo, "/");
+  return { href: withQuery(fallback, { asked: "1" }) };
 }
 
 async function ownedLead(leadId: string) {

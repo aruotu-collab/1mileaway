@@ -1,11 +1,11 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { slugify } from "@/lib/utils";
 import { resolvePlace, reverseGeocode } from "@/lib/locations/geocode";
+import { marketplaceHref } from "@/lib/search/marketplace";
 
-export async function goToMarketplace(formData: FormData) {
+export async function goToMarketplace(formData: FormData): Promise<{ href: string } | { error: string }> {
   const country = String(formData.get("country") ?? "gb").toLowerCase();
   const professionQuery = slugify(String(formData.get("profession") ?? "plumbers"));
   const locationQuery = String(formData.get("location") ?? "").trim();
@@ -13,8 +13,12 @@ export async function goToMarketplace(formData: FormData) {
   const lat = Number(formData.get("lat"));
   const lng = Number(formData.get("lng"));
 
+  if (!locationQuery && !(Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0)) {
+    return { error: "Choose where you need help — pick an area, use your location, or type a postcode." };
+  }
+
   const countryRow = await prisma.country.findUnique({ where: { iso2: country } });
-  if (!countryRow) redirect("/");
+  if (!countryRow) return { error: "That country is not on 1mileaway yet." };
 
   const profession = await prisma.professionSlug.findFirst({
     where: {
@@ -27,6 +31,7 @@ export async function goToMarketplace(formData: FormData) {
       ],
     },
   });
+  if (!profession) return { error: "Choose what you need from the list." };
 
   const place = await resolvePlace({
     countryId: countryRow.id,
@@ -35,23 +40,20 @@ export async function goToMarketplace(formData: FormData) {
     lat: Number.isFinite(lat) && lat !== 0 ? lat : undefined,
     lng: Number.isFinite(lng) && lng !== 0 ? lng : undefined,
   });
-
-  if (profession && place) {
-    const slug = emergency && profession.emergencySlug ? profession.emergencySlug : profession.slug;
-    const params = new URLSearchParams();
-    if (place.source !== "directory") {
-      params.set("near", place.label);
-      params.set("lat", String(place.lat));
-      params.set("lng", String(place.lng));
-    }
-    const query = params.toString();
-    redirect(`/${country}/${slug}/${place.locationSlug}${query ? `?${query}` : ""}`);
+  if (!place) {
+    return { error: "We could not recognise that place. Pick an area from the list, or type a postcode." };
   }
 
-  const params = new URLSearchParams();
-  if (professionQuery) params.set("profession", professionQuery);
-  if (locationQuery) params.set("location", locationQuery);
-  redirect(`/${country}/search?${params.toString()}`);
+  return {
+    href: marketplaceHref({
+      country,
+      professionSlug: profession.slug,
+      emergencySlug: profession.emergencySlug,
+      emergency,
+      locationSlug: place.locationSlug,
+      near: place.source === "directory" ? null : { label: place.label, lat: place.lat, lng: place.lng },
+    }),
+  };
 }
 
 export async function labelForCoordinates(country: string, lat: number, lng: number) {

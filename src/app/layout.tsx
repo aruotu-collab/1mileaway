@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { Newsreader, Outfit } from "next/font/google";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { LiveActivityTape } from "@/components/live-activity-tape";
 import { GoogleAnalytics } from "@/components/google-analytics";
 import { APP_URL } from "@/lib/constants";
+import { getRequestUi } from "@/lib/countries/request";
 import { googleSiteVerification } from "@/lib/google";
 import "./globals.css";
 
@@ -29,12 +31,16 @@ export const metadata: Metadata = {
   verification: googleVerification ? { google: googleVerification } : undefined,
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const ui = await getRequestUi();
   return (
-    <html lang="en-GB" className={`${outfit.variable} ${newsreader.variable} h-full antialiased`}>
+    <html lang={ui.htmlLang} dir={ui.dir} className={`${outfit.variable} ${newsreader.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <GoogleAnalytics />
-        <SiteHeader />
+        <div className="sticky top-0 z-40">
+          <SiteHeader />
+          <LiveActivityTape />
+        </div>
         <div className="flex-1">{children}</div>
         <SiteFooter />
       </body>

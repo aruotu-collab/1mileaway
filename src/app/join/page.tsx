@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { createOwnListing } from "@/app/actions/join";
 import { ProfessionPicker } from "@/components/profession-picker";
+import { getRequestUi } from "@/lib/countries/request";
 import { listProfessionPicks } from "@/lib/listings/professions";
 
 export default async function JoinPage({
@@ -10,10 +11,12 @@ export default async function JoinPage({
   searchParams: Promise<{ error?: string; profession?: string; location?: string; name?: string }>;
 }) {
   const query = await searchParams;
+  const ui = await getRequestUi();
+  const countryIso = ui.country.iso2;
   const [professions, locations] = await Promise.all([
-    listProfessionPicks(),
+    listProfessionPicks(countryIso),
     prisma.location.findMany({
-      where: { country: { iso2: "gb" }, type: "district", active: true },
+      where: { country: { iso2: countryIso }, type: { in: ["district", "city"] }, active: true },
       orderBy: { name: "asc" },
     }),
   ]);
@@ -35,12 +38,23 @@ export default async function JoinPage({
 
   return (
     <main className="mx-auto max-w-md px-4 py-12">
+      <p className="mb-4">
+        <Link href="/for-professionals" className="text-sm font-medium text-moss-deep hover:underline">
+          ← How it works
+        </Link>
+      </p>
       <h1 className="serif text-4xl">Join 1mileaway</h1>
       <p className="mt-3 text-ink-soft">
-        Create your listing with your own work email. You get two months free — we count every customer call so you can
-        see if it is worth paying for. We do not collect contact details from other websites.
+        Create your listing with your own work email. You get two months free with no card. We count every customer call
+        so you can see if it is worth paying for. We do not collect contact details from other websites.
       </p>
       {query.error ? <p className="mt-3 text-rust">Please fill in every field, including at least one trade.</p> : null}
+      {locations.length === 0 ? (
+        <p className="card mt-6 p-5 text-ink-soft">
+          We are not taking listings in {ui.country.name} yet. Switch country to the United Kingdom to join the live
+          marketplace, or check back when this country opens.
+        </p>
+      ) : (
       <form action={createOwnListing} className="card mt-6 grid gap-3 p-5">
         <label>
           <span className="mb-1 block text-sm font-medium">Business name</span>
@@ -90,6 +104,7 @@ export default async function JoinPage({
           Create listing
         </button>
       </form>
+      )}
       <p className="mt-8 text-sm text-ink-soft">
         Already invited?{" "}
         <Link href="/login" className="underline">

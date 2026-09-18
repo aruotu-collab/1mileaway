@@ -120,7 +120,7 @@ export function LocationField({
         <ul
           id={listId}
           role="listbox"
-          className="absolute z-30 mt-1 max-h-96 w-full overflow-auto rounded-2xl border border-line bg-paper-strong py-1 shadow-lg"
+          className="absolute z-50 mt-1 max-h-72 w-full overflow-auto rounded-2xl border border-line bg-paper-strong py-1 shadow-lg sm:max-h-96"
         >
           <li role="option" aria-selected={highlight === "current"}>
             <button

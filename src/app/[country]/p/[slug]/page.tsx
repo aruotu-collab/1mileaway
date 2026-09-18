@@ -1,13 +1,14 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { ListingCard } from "@/components/listing-card";
 import { ClaimListingCta } from "@/components/claim-listing-cta";
+import { BackLink } from "@/components/back-link";
 import { isAvailabilityLive } from "@/lib/availability/engine";
 import { CLAIM_STATUS } from "@/lib/constants";
 import { listingCallOptions } from "@/lib/phone";
 import { marketplaceStats } from "@/lib/subscription";
+import { safeInternalPath } from "@/lib/navigation";
 
 export async function generateMetadata({
   params,
@@ -23,10 +24,8 @@ export async function generateMetadata({
   };
 }
 
-function safeReturnPath(from: string | undefined, fallback: string) {
-  if (!from) return fallback;
-  if (!from.startsWith("/") || from.startsWith("//")) return fallback;
-  return from;
+function fallbackResultsPath(country: string, professionSlug: string, locationSlug: string) {
+  return `/${country}/${professionSlug}/${locationSlug}`;
 }
 
 export default async function ProfilePage({
@@ -57,8 +56,8 @@ export default async function ProfilePage({
   const professionSlug =
     profession?.profession.slugs.find((row) => row.countryId === business.countryId)?.slug ?? "plumbers";
   const locationSlug = business.locations[0]?.location.slug ?? "catford";
-  const resultsHref = safeReturnPath(query.from, `/${country}/${professionSlug}/${locationSlug}`);
-  const fromSlug = resultsHref.split("/").filter(Boolean).at(-1) ?? locationSlug;
+  const resultsHref = safeInternalPath(query.from, fallbackResultsPath(country, professionSlug, locationSlug));
+  const fromSlug = resultsHref.split("?")[0].split("/").filter(Boolean).at(-1) ?? locationSlug;
   const resultsLabel = fromSlug.replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
   const unclaimed = business.claimStatus === CLAIM_STATUS.UNCLAIMED;
   const stats = unclaimed ? await marketplaceStats(business.id) : null;
@@ -70,9 +69,9 @@ export default async function ProfilePage({
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
       <p className="mb-4">
-        <Link href={resultsHref} className="text-sm font-medium text-moss-deep hover:underline">
+        <BackLink href={resultsHref} className="text-sm font-medium text-moss-deep hover:underline">
           ← Back to {resultsLabel} results
-        </Link>
+        </BackLink>
       </p>
       <ListingCard
         featured

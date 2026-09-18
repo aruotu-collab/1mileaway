@@ -1,0 +1,225 @@
+import type { UiLanguage } from "@/lib/countries/catalog";
+
+const en = {
+  findHelp: "Find help",
+  forProfessionals: "For professionals",
+  signIn: "Sign in",
+  signOut: "Sign out",
+  dashboard: "Dashboard",
+  admin: "Admin",
+  menu: "Menu",
+  close: "Close",
+  eyebrow: "Local help, actually available",
+  homeTitle: "Find a professional nearby who can actually help.",
+  homeLead:
+    "Choose what you need and where. We show people who serve that area and have recently said they are free to take work.",
+  proCardTitle: "Are you a professional?",
+  proCardLead:
+    "Two months free, then a monthly listing. Nearby customers tap Call now and ring you directly. Each call is emailed to you and counted in your account so you can see if it is worth paying for.",
+  comingTitle: "1mileaway is not live here yet.",
+  comingLead: "We are opening country by country. {country} is on the list. Until then you can search the UK marketplace.",
+  comingCta: "Search the UK",
+  comingJoin: "For professionals",
+  countryLabel: "Country",
+  liveBadge: "Live",
+  soonBadge: "Soon",
+  billingNote: "Professionals pay one monthly listing in US dollars, in every country.",
+};
+
+type Copy = typeof en;
+
+const de: Copy = {
+  ...en,
+  findHelp: "Hilfe finden",
+  forProfessionals: "Für Fachleute",
+  signIn: "Anmelden",
+  signOut: "Abmelden",
+  dashboard: "Konto",
+  menu: "Menü",
+  close: "Schließen",
+  eyebrow: "Hilfe in der Nähe, wirklich verfügbar",
+  homeTitle: "Finde eine Fachkraft in der Nähe, die wirklich helfen kann.",
+  homeLead: "Wähle, was du brauchst und wo. Wir zeigen Leute, die dieses Gebiet bedienen und zuletzt frei gemeldet haben.",
+  proCardTitle: "Bist du Fachkraft?",
+  proCardLead:
+    "Zwei Monate kostenlos, dann ein monatliches Inserat. Kunden tippen Anrufen und erreichen deine eigene Nummer.",
+  comingTitle: "1mileaway ist hier noch nicht live.",
+  comingLead: "Wir öffnen Land für Land. {country} steht auf der Liste. Bis dahin kannst du den britischen Marktplatz nutzen.",
+  comingCta: "Großbritannien durchsuchen",
+  countryLabel: "Land",
+  liveBadge: "Live",
+  soonBadge: "Bald",
+  billingNote: "Fachleute zahlen überall denselben Monatspreis in US-Dollar.",
+};
+
+const fr: Copy = {
+  ...en,
+  findHelp: "Trouver de l’aide",
+  forProfessionals: "Pour les professionnels",
+  signIn: "Connexion",
+  signOut: "Déconnexion",
+  dashboard: "Espace pro",
+  menu: "Menu",
+  close: "Fermer",
+  eyebrow: "De l’aide proche, vraiment disponible",
+  homeTitle: "Trouvez un professionnel près de chez vous qui peut vraiment aider.",
+  homeLead: "Choisissez le besoin et le lieu. Nous montrons les personnes qui couvrent ce secteur et se sont dites disponibles.",
+  proCardTitle: "Vous êtes professionnel ?",
+  proCardLead:
+    "Deux mois offerts, puis un abonnement mensuel. Les clients appellent votre propre numéro.",
+  comingTitle: "1mileaway n’est pas encore ouvert ici.",
+  comingLead: "Nous ouvrons pays par pays. {country} est prévu. En attendant, cherchez au Royaume-Uni.",
+  comingCta: "Chercher au Royaume-Uni",
+  countryLabel: "Pays",
+  liveBadge: "Ouvert",
+  soonBadge: "Bientôt",
+  billingNote: "Les professionnels paient un seul abonnement mensuel en dollars US, dans tous les pays.",
+};
+
+const es: Copy = {
+  ...en,
+  findHelp: "Buscar ayuda",
+  forProfessionals: "Para profesionales",
+  signIn: "Entrar",
+  signOut: "Salir",
+  dashboard: "Panel",
+  menu: "Menú",
+  close: "Cerrar",
+  eyebrow: "Ayuda cerca, de verdad disponible",
+  homeTitle: "Encuentra un profesional cerca que pueda ayudar de verdad.",
+  homeLead: "Elige qué necesitas y dónde. Mostramos a quien cubre esa zona y ha dicho que está libre.",
+  proCardTitle: "¿Eres profesional?",
+  proCardLead: "Dos meses gratis y luego una cuota mensual. Los clientes llaman a tu propio número.",
+  comingTitle: "1mileaway aún no está abierto aquí.",
+  comingLead: "Abrimos país por país. {country} está en la lista. Mientras tanto puedes buscar en el Reino Unido.",
+  comingCta: "Buscar en el Reino Unido",
+  countryLabel: "País",
+  liveBadge: "Abierto",
+  soonBadge: "Pronto",
+  billingNote: "Los profesionales pagan una sola cuota mensual en dólares, en todos los países.",
+};
+
+const it: Copy = {
+  ...en,
+  findHelp: "Trova aiuto",
+  forProfessionals: "Per i professionisti",
+  signIn: "Accedi",
+  signOut: "Esci",
+  dashboard: "Area personale",
+  menu: "Menu",
+  close: "Chiudi",
+  eyebrow: "Aiuto vicino, davvero disponibile",
+  homeTitle: "Trova un professionista vicino che possa davvero aiutare.",
+  homeLead: "Scegli cosa ti serve e dove. Mostriamo chi copre quella zona e si è detto libero.",
+  proCardTitle: "Sei un professionista?",
+  proCardLead: "Due mesi gratis, poi un canone mensile. I clienti chiamano il tuo numero.",
+  comingTitle: "1mileaway non è ancora attivo qui.",
+  comingLead: "Apriamo paese per paese. {country} è in elenco. Nel frattempo cerca nel Regno Unito.",
+  comingCta: "Cerca nel Regno Unito",
+  countryLabel: "Paese",
+  liveBadge: "Attivo",
+  soonBadge: "Presto",
+  billingNote: "I professionisti pagano un solo abbonamento mensile in dollari, in ogni paese.",
+};
+
+const nl: Copy = {
+  ...en,
+  findHelp: "Hulp vinden",
+  forProfessionals: "Voor vakmensen",
+  signIn: "Inloggen",
+  signOut: "Uitloggen",
+  dashboard: "Dashboard",
+  menu: "Menu",
+  close: "Sluiten",
+  eyebrow: "Hulp in de buurt, echt beschikbaar",
+  homeTitle: "Vind een vakman in de buurt die écht kan helpen.",
+  homeLead: "Kies wat je nodig hebt en waar. We tonen mensen die dat gebied bedienen en recent vrij waren.",
+  proCardTitle: "Ben je vakman?",
+  proCardLead: "Twee maanden gratis, daarna een maandelijks abonnement. Klanten bellen jouw eigen nummer.",
+  comingTitle: "1mileaway is hier nog niet live.",
+  comingLead: "We openen land voor land. {country} staat op de lijst. Tot die tijd kun je in het VK zoeken.",
+  comingCta: "Zoek in het VK",
+  countryLabel: "Land",
+  liveBadge: "Live",
+  soonBadge: "Binnenkort",
+  billingNote: "Vakmensen betalen overal hetzelfde maandbedrag in Amerikaanse dollars.",
+};
+
+const pl: Copy = {
+  ...en,
+  findHelp: "Znajdź pomoc",
+  forProfessionals: "Dla fachowców",
+  signIn: "Zaloguj się",
+  signOut: "Wyloguj",
+  dashboard: "Panel",
+  menu: "Menu",
+  close: "Zamknij",
+  eyebrow: "Pomoc w pobliżu, naprawdę dostępna",
+  homeTitle: "Znajdź fachowca w pobliżu, który naprawdę pomoże.",
+  homeLead: "Wybierz, czego potrzebujesz i gdzie. Pokazujemy osoby z tego terenu, które niedawno zgłosiły dostępność.",
+  proCardTitle: "Jesteś fachowcem?",
+  proCardLead: "Dwa miesiące za darmo, potem miesięczna opłata. Klienci dzwonią na twój numer.",
+  comingTitle: "1mileaway nie działa tu jeszcze.",
+  comingLead: "Otwieramy kraj po kraju. {country} jest na liście. Na razie szukaj w Wielkiej Brytanii.",
+  comingCta: "Szukaj w Wielkiej Brytanii",
+  countryLabel: "Kraj",
+  liveBadge: "Działa",
+  soonBadge: "Wkrótce",
+  billingNote: "Fachowcy płacą jedną miesięczną stawkę w dolarach, w każdym kraju.",
+};
+
+const ar: Copy = {
+  ...en,
+  findHelp: "ابحث عن مساعدة",
+  forProfessionals: "للمهنيين",
+  signIn: "تسجيل الدخول",
+  signOut: "خروج",
+  dashboard: "لوحة التحكم",
+  menu: "القائمة",
+  close: "إغلاق",
+  eyebrow: "مساعدة قريبة ومتاحة فعلاً",
+  homeTitle: "اعثر على مهني قريب يمكنه المساعدة حقاً.",
+  homeLead: "اختر ما تحتاجه والمكان. نعرض من يخدم تلك المنطقة وقال إنه متاح.",
+  proCardTitle: "هل أنت مهني؟",
+  proCardLead: "شهران مجاناً ثم اشتراك شهري. يتصل العملاء برقمك مباشرة.",
+  comingTitle: "1mileaway غير متاح هنا بعد.",
+  comingLead: "نفتح دولة بعد دولة. {country} ضمن الخطة. حتى ذلك الحين يمكنك البحث في المملكة المتحدة.",
+  comingCta: "ابحث في المملكة المتحدة",
+  countryLabel: "الدولة",
+  liveBadge: "متاح",
+  soonBadge: "قريباً",
+  billingNote: "يدفع المهنيون اشتراكاً شهرياً واحداً بالدولار في كل الدول.",
+};
+
+const pt: Copy = {
+  ...en,
+  findHelp: "Encontrar ajuda",
+  forProfessionals: "Para profissionais",
+  signIn: "Entrar",
+  signOut: "Sair",
+  dashboard: "Painel",
+  menu: "Menu",
+  close: "Fechar",
+  eyebrow: "Ajuda por perto, de verdade disponível",
+  homeTitle: "Encontre um profissional perto de você que possa realmente ajudar.",
+  homeLead: "Escolha o que precisa e onde. Mostramos quem atende aquela área e disse estar livre.",
+  proCardTitle: "Você é profissional?",
+  proCardLead: "Dois meses grátis e depois uma mensalidade. Os clientes ligam para o seu número.",
+  comingTitle: "O 1mileaway ainda não está no ar aqui.",
+  comingLead: "Abrimos país por país. {country} está na lista. Enquanto isso, busque no Reino Unido.",
+  comingCta: "Buscar no Reino Unido",
+  countryLabel: "País",
+  liveBadge: "No ar",
+  soonBadge: "Em breve",
+  billingNote: "Profissionais pagam uma única mensalidade em dólares, em todos os países.",
+};
+
+const dictionaries: Record<UiLanguage, Copy> = { en, de, fr, es, it, nl, pl, ar, pt };
+
+export function uiCopy(language: UiLanguage) {
+  return dictionaries[language] ?? en;
+}
+
+export function fillCountry(template: string, country: string) {
+  return template.replaceAll("{country}", country);
+}

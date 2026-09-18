@@ -1,8 +1,20 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { rankListings } from "@/lib/ranking/engine";
-import { isAvailabilityLive } from "@/lib/availability/engine";
 import { createUnclaimedListing, importListingsCsv } from "@/app/actions/admin";
+import { claimLabel } from "@/lib/admin/insights";
+import { isAvailabilityLive } from "@/lib/availability/engine";
+import { CLAIM_STATUS, PAYMENT_STATES } from "@/lib/constants";
+import { listProfessionPicks } from "@/lib/listings/professions";
+import { publicCallPhone } from "@/lib/phone";
+import { daysRemaining, isSubscriptionActive, isTrialing } from "@/lib/subscription";
+
+const filters = [
+  { id: "all", label: "All" },
+  { id: "unclaimed", label: "Unclaimed" },
+  { id: "claimed", label: "Claimed" },
+  { id: "trial", label: "On trial" },
+  { id: "live", label: "Call now on" },
+] as const;
 
 export default async function AdminProfessionalsPage({
   searchParams,
@@ -13,33 +25,76 @@ export default async function AdminProfessionalsPage({
     skipped?: string;
     invalid?: string;
     importError?: string;
+    view?: string;
   }>;
 }) {
   const imported = await searchParams;
-  const [professions, locations] = await Promise.all([
-    prisma.profession.findMany({ where: { active: true }, orderBy: { internalId: "asc" } }),
+  const view = filters.some((filter) => filter.id === imported.view) ? imported.view : "all";
+  const [professions, locations, businesses, askCounts] = await Promise.all([
+    listProfessionPicks(),
     prisma.location.findMany({
       where: { country: { iso2: "gb" }, type: "district", active: true },
       orderBy: { name: "asc" },
     }),
+    prisma.business.findMany({
+      where: { deletedAt: null },
+      include: {
+        availability: true,
+        subscription: true,
+        professions: { include: { profession: { include: { slugs: true } } } },
+        locations: { include: { location: true } },
+        _count: { select: { calls: true, reviews: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.lead.groupBy({
+      by: ["businessId"],
+      where: { callId: null },
+      _count: { _all: true },
+    }),
   ]);
-  const businesses = await prisma.business.findMany({
-    include: { availability: true, trialBalance: true, outstanding: { where: { status: "OPEN" } } },
-    orderBy: { name: "asc" },
-  });
-  const ranked = rankListings(
-    businesses.map((biz) => ({
-      ...biz,
-      distanceMiles: 1,
-      availabilityStatus: isAvailabilityLive(biz.availability?.status ?? "UNKNOWN", biz.availability?.expiresAt),
-      availabilityExpiresAt: biz.availability?.expiresAt ?? null,
-      availabilityConfirmedAt: biz.availability?.confirmedAt ?? null,
-    })),
-  );
+  const asksByBusiness = new Map(askCounts.map((row) => [row.businessId, row._count._all]));
+
+  const rows = businesses
+    .map((biz) => {
+      const periodEnd = biz.subscription?.currentPeriodEnd ?? null;
+      const callNowOn = Boolean(
+        publicCallPhone({
+          claimStatus: biz.claimStatus,
+          paymentState: biz.paymentState,
+          phoneReal: biz.phoneReal,
+          currentPeriodEnd: periodEnd,
+        }),
+      );
+      return {
+        ...biz,
+        callNowOn,
+        trial: isTrialing(biz.paymentState, periodEnd),
+        subscribed: isSubscriptionActive(biz.paymentState, periodEnd),
+        daysLeft: daysRemaining(periodEnd),
+        asks: asksByBusiness.get(biz.id) ?? 0,
+        availability: isAvailabilityLive(biz.availability?.status ?? "UNKNOWN", biz.availability?.expiresAt),
+        trades: biz.professions.map((row) => row.profession.slugs[0]?.name ?? row.profession.internalId),
+        areas: biz.locations.map((row) => row.location.name),
+      };
+    })
+    .filter((biz) => {
+      if (view === "unclaimed") return biz.claimStatus === CLAIM_STATUS.UNCLAIMED;
+      if (view === "claimed") {
+        return biz.claimStatus === CLAIM_STATUS.CLAIMED || biz.claimStatus === CLAIM_STATUS.VERIFIED;
+      }
+      if (view === "trial") return biz.trial;
+      if (view === "live") return biz.callNowOn;
+      return true;
+    });
 
   return (
     <main>
       <h1 className="serif text-4xl">Professionals</h1>
+      <p className="mt-2 text-ink-soft">
+        Every listing customers can find. Call now is only on when the listing is claimed and the trial or subscription is
+        live.
+      </p>
       {imported.created || imported.importError ? (
         <p className="card mt-6 p-4">
           {imported.importError
@@ -47,13 +102,71 @@ export default async function AdminProfessionalsPage({
             : `Imported ${imported.created} listings · ${imported.invited ?? 0} invited · ${imported.skipped ?? 0} skipped · ${imported.invalid ?? 0} invalid.`}
         </p>
       ) : null}
-      <form action={importListingsCsv} className="card mt-6 grid gap-3 p-5">
+
+      <div className="mt-6 flex flex-wrap gap-2 text-sm">
+        {filters.map((filter) => (
+          <Link
+            key={filter.id}
+            href={filter.id === "all" ? "/admin/professionals" : `/admin/professionals?view=${filter.id}`}
+            className={
+              view === filter.id
+                ? "rounded-full bg-ink px-3 py-2 text-paper-strong"
+                : "rounded-full border border-line px-3 py-2"
+            }
+          >
+            {filter.label}
+          </Link>
+        ))}
+      </div>
+
+      <div className="mt-6 grid gap-3">
+        {rows.length === 0 ? (
+          <p className="card p-5 text-ink-soft">No listings in this view.</p>
+        ) : (
+          rows.map((biz) => (
+            <article key={biz.id} className="card p-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="serif text-2xl">
+                  <Link href={`/gb/p/${biz.slug}`} className="hover:underline">
+                    {biz.name}
+                  </Link>
+                </h2>
+                <p className="text-sm font-semibold">
+                  {biz.callNowOn ? "Call now on" : "Call now off"}
+                </p>
+              </div>
+              <p className="mt-1 text-sm text-ink-soft">
+                {claimLabel(biz.claimStatus)}
+                {biz.trial
+                  ? ` · two-month trial${biz.daysLeft != null ? ` · ${biz.daysLeft} days left` : ""}`
+                  : biz.subscribed
+                    ? " · paying"
+                    : biz.paymentState === PAYMENT_STATES.UNSUBSCRIBED
+                      ? ""
+                      : ` · ${biz.paymentState}`}
+                {biz.outreachStatus && biz.outreachStatus !== "NONE" ? ` · outreach ${biz.outreachStatus}` : ""}
+                {biz.dataProvenance ? ` · ${biz.dataProvenance}` : ""}
+              </p>
+              <p className="mt-1 text-sm text-ink-soft">
+                {biz.trades.join(", ") || "No trades"} · {biz.areas.join(", ") || "No areas"} · availability{" "}
+                {biz.availability.replaceAll("_", " ").toLowerCase()}
+              </p>
+              <p className="mt-1 text-sm text-ink-soft">
+                {biz._count.calls} Call now {biz._count.calls === 1 ? "tap" : "taps"} · {biz.asks}{" "}
+                {biz.asks === 1 ? "ask that could not connect" : "asks that could not connect"} · {biz._count.reviews}{" "}
+                {biz._count.reviews === 1 ? "review" : "reviews"}
+              </p>
+            </article>
+          ))
+        )}
+      </div>
+
+      <form action={importListingsCsv} className="card mt-10 grid gap-3 p-5">
         <h2 className="serif text-2xl">Import listings from CSV</h2>
         <p className="text-sm text-ink-soft">
-          Columns: name, email, profession, location, website, phone, about, source. Profession is an id such as
-          plumber, mobile_tyre or mobile_laundry. Location is a slug such as catford. Email is optional — rows without
-          one are listed but not emailed.
-          Only import contacts you are allowed to use.
+          Columns: name, email, profession, location, website, phone, about, source. Profession is an id such as plumber
+          or hairdresser. Location is a slug such as catford. Email is optional — rows without one are listed but not
+          emailed. Only import contacts you are allowed to use.
         </p>
         <label>
           <span className="mb-1 block text-sm font-medium">Provenance</span>
@@ -78,7 +191,7 @@ export default async function AdminProfessionalsPage({
         <select className="rounded-2xl border border-line bg-paper px-4 py-3" name="professionId" required>
           {professions.map((profession) => (
             <option key={profession.id} value={profession.id}>
-              {profession.internalId}
+              {profession.label}
             </option>
           ))}
         </select>
@@ -93,28 +206,6 @@ export default async function AdminProfessionalsPage({
           Invite to claim
         </button>
       </form>
-      <div className="mt-6 grid gap-3">
-        {ranked.map((biz) => (
-          <article key={biz.id} className="card p-4">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="serif text-2xl">
-                <Link href={`/gb/p/${biz.slug}`}>{biz.name}</Link>
-              </h2>
-              <p className="text-sm text-ink-soft">score {biz.score.toFixed(2)}</p>
-            </div>
-            <p className="mt-1 text-sm text-ink-soft">
-              {biz.claimStatus} · {biz.paymentState} · trial {biz.trialBalance?.remaining ?? 0} ·{" "}
-              {biz.outstanding.length ? "outstanding lead" : "no balance"}
-              {biz.outreachStatus && biz.outreachStatus !== "NONE" ? ` · outreach ${biz.outreachStatus}` : ""}
-              {biz.dataProvenance ? ` · ${biz.dataProvenance}` : ""}
-            </p>
-            <p className="mt-2 text-xs text-ink-soft">
-              Availability {biz.explanation.availability.toFixed(2)} · Distance {biz.explanation.distance.toFixed(2)} · Answer{" "}
-              {biz.explanation.answer.toFixed(2)} · Verification {biz.explanation.verified.toFixed(2)}
-            </p>
-          </article>
-        ))}
-      </div>
     </main>
   );
 }

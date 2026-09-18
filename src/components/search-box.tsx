@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useId, useState } from "react";
+import { useRouter } from "next/navigation";
 import { goToMarketplace, labelForCoordinates } from "@/app/actions/search";
 import { LocationField } from "@/components/location-field";
 import { UrgencyTabs } from "@/components/urgency-tabs";
@@ -12,7 +13,9 @@ export function SearchBox({
   defaultProfession = "plumbers",
   defaultLocation = "",
   emergency = false,
-  showUrgencyTabs = false,
+  showUrgencyTabs = true,
+  regularHref,
+  emergencyHref,
   professions = [],
   locations = [],
 }: {
@@ -21,20 +24,51 @@ export function SearchBox({
   defaultLocation?: string;
   emergency?: boolean;
   showUrgencyTabs?: boolean;
+  regularHref?: string;
+  emergencyHref?: string;
   professions?: ProfessionChoice[];
   locations?: LocationChoice[];
 }) {
+  const router = useRouter();
+  const inputId = useId();
+  const [pending, setPending] = useState(false);
   const [location, setLocation] = useState(defaultLocation);
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
   const [geoStatus, setGeoStatus] = useState<string | null>(null);
   const [isEmergency, setIsEmergency] = useState(emergency);
+  const [error, setError] = useState<string | null>(null);
+  const [profession, setProfession] = useState(
+    professions.find((item) => item.slug === defaultProfession)?.slug ??
+      professions[0]?.slug ??
+      "plumbers",
+  );
+
+  useEffect(() => {
+    setLocation(defaultLocation);
+    setLat("");
+    setLng("");
+    setGeoStatus(null);
+  }, [defaultLocation]);
+
+  useEffect(() => {
+    setIsEmergency(emergency);
+  }, [emergency]);
+
+  useEffect(() => {
+    setProfession(
+      professions.find((item) => item.slug === defaultProfession)?.slug ??
+        professions[0]?.slug ??
+        "plumbers",
+    );
+  }, [defaultProfession, professions]);
 
   function onLocationChange(value: string) {
     setLocation(value);
     setLat("");
     setLng("");
     setGeoStatus(null);
+    setError(null);
   }
 
   async function useCurrentLocation() {
@@ -52,6 +86,7 @@ export function SearchBox({
         const label = await labelForCoordinates(country, nextLat, nextLng);
         setLocation(label);
         setGeoStatus(`Using ${label}`);
+        setError(null);
       },
       () => {
         setGeoStatus("Location permission was denied. Type a postcode or address instead.");
@@ -61,21 +96,57 @@ export function SearchBox({
   }
 
   return (
-    <form action={goToMarketplace} className="card grid gap-3 p-4">
+    <form
+      className="card grid gap-3 p-4"
+      aria-busy={pending}
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!location.trim() && !lat) {
+          setError("Choose where you need help — pick an area, use your location, or type a postcode.");
+          return;
+        }
+        const formData = new FormData(event.currentTarget);
+        setError(null);
+        setPending(true);
+        void (async () => {
+          try {
+            const result = await goToMarketplace(formData);
+            if ("error" in result) {
+              setError(result.error);
+              return;
+            }
+            router.push(result.href);
+          } catch {
+            setError("Search did not finish. Try again.");
+          } finally {
+            setPending(false);
+          }
+        })();
+      }}
+    >
       {showUrgencyTabs ? (
-        <UrgencyTabs emergency={isEmergency} onChange={setIsEmergency} />
+        <div>
+          <UrgencyTabs
+            emergency={isEmergency}
+            regularHref={regularHref}
+            emergencyHref={emergencyHref}
+            onChange={regularHref || emergencyHref ? undefined : setIsEmergency}
+          />
+          <p className="mt-2 text-xs text-ink-soft sm:text-sm">
+            {isEmergency
+              ? "Emergency shows people who can help right now."
+              : "Nearest shows the closest professionals to you."}
+          </p>
+        </div>
       ) : null}
       <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-start">
-        <label className="block">
+        <label className="order-2 block sm:order-1">
           <span className="mb-1 block text-sm font-medium">What do you need?</span>
           <select
             className="w-full rounded-2xl border border-line bg-paper px-4 py-3"
             name="profession"
-            defaultValue={
-              professions.find((profession) => profession.slug === defaultProfession)?.slug ??
-              professions[0]?.slug ??
-              "plumbers"
-            }
+            value={profession}
+            onChange={(event) => setProfession(event.target.value)}
             required
           >
             {groupedProfessions(professions).map((group) => (
@@ -89,12 +160,12 @@ export function SearchBox({
             ))}
           </select>
         </label>
-        <div className="block">
-          <label htmlFor="where-needed" className="mb-1 block text-sm font-medium">
+        <div className="order-3 block sm:order-2">
+          <label htmlFor={inputId} className="mb-1 block text-sm font-medium">
             Where do you need it?
           </label>
           <LocationField
-            id="where-needed"
+            id={inputId}
             value={location}
             locations={locations}
             onChange={onLocationChange}
@@ -102,16 +173,17 @@ export function SearchBox({
             geoStatus={geoStatus}
           />
         </div>
-        <div className="flex sm:pt-7">
+        <div className="order-1 flex sm:order-3 sm:pt-7">
           <input type="hidden" name="country" value={country} />
           <input type="hidden" name="lat" value={lat} />
           <input type="hidden" name="lng" value={lng} />
           {isEmergency ? <input type="hidden" name="emergency" value="1" /> : null}
-          <button className="btn btn-primary w-full sm:w-auto" type="submit">
-            Search nearby
+          <button className="btn btn-primary w-full sm:w-auto" type="submit" disabled={pending}>
+            {pending ? "Finding…" : "Search nearby"}
           </button>
         </div>
       </div>
+      {error ? <p className="text-sm text-rust">{error}</p> : null}
     </form>
   );
 }

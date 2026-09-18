@@ -1,10 +1,9 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { DirectDial } from "@/components/direct-dial";
 import { ListingCard } from "@/components/listing-card";
 import { PhoneIcon } from "@/components/phone-icon";
-import { startCall } from "@/app/actions/calls";
+import { BackLink } from "@/components/back-link";
 import { reportNoAnswer, reportTheyAnswered, submitCallFeedback } from "@/app/actions/feedback";
 import { nextCallableListing, skippedBusinessIdsFromPayload } from "@/lib/calls/next";
 import { CALL_OUTCOME } from "@/lib/feedback";
@@ -63,6 +62,11 @@ export default async function CallPage({
   return (
     <main className="mx-auto max-w-lg px-4 py-10">
       {tel && !reported ? <DirectDial href={tel} /> : null}
+      <p className="mb-4">
+        <BackLink href={resultsHref} className="text-sm font-medium text-moss-deep hover:underline">
+          ← Back to nearby professionals
+        </BackLink>
+      </p>
       <h1 className="serif text-4xl">Calling {call.business.name}</h1>
       <p className="mt-3 text-ink-soft">This rings their phone directly.</p>
       <div className="card mt-6 p-5">
@@ -114,50 +118,35 @@ export default async function CallPage({
               : "There is nobody else nearby who can take a call through 1mileaway right now."}
           </p>
           {next ? (
-            <form action={startCall} className="mt-4">
-              <input type="hidden" name="businessId" value={next.id} />
-              <input type="hidden" name="professionId" value={professionId ?? ""} />
-              <input type="hidden" name="locationId" value={locationId ?? ""} />
-              <input type="hidden" name="country" value={country} />
-              <input type="hidden" name="returnTo" value={resultsHref} />
-              <input type="hidden" name="skip" value={alreadyTried.join(",")} />
-              <button className="btn btn-primary w-full" type="submit">
-                <PhoneIcon />
-                Call {next.name}
-              </button>
-            </form>
+            <div className="mt-4">
+              <ListingCard
+                country={country}
+                slug={next.slug}
+                name={next.name}
+                about={next.about}
+                distanceMiles={next.distanceMiles}
+                availabilityStatus={next.availabilityStatus}
+                availabilityConfirmedAt={next.availabilityConfirmedAt}
+                answerRate={next.answerRate}
+                answerReports={next.answerReports}
+                ratingAvg={next.ratingAvg}
+                ratingCount={next.ratingCount}
+                claimStatus={next.claimStatus}
+                businessId={next.id}
+                professionId={professionId}
+                locationId={locationId}
+                resultsHref={resultsHref}
+                phone={next.phone}
+                canRequest={false}
+                skip={alreadyTried.join(",")}
+                showProfileLink
+              />
+            </div>
           ) : null}
-          <Link href={resultsHref} className="btn btn-ghost mt-3 w-full">
+          <BackLink href={resultsHref} className="btn btn-ghost mt-3 w-full">
             See other professionals nearby
-          </Link>
+          </BackLink>
         </section>
-      ) : null}
-
-      {next && call.status === CALL_OUTCOME.NO_ANSWER ? (
-        <div className="mt-4">
-          <ListingCard
-            country={country}
-            slug={next.slug}
-            name={next.name}
-            about={next.about}
-            distanceMiles={next.distanceMiles}
-            availabilityStatus={next.availabilityStatus}
-            availabilityConfirmedAt={next.availabilityConfirmedAt}
-            answerRate={next.answerRate}
-            answerReports={next.answerReports}
-            ratingAvg={next.ratingAvg}
-            ratingCount={next.ratingCount}
-            claimStatus={next.claimStatus}
-            businessId={next.id}
-            professionId={professionId}
-            locationId={locationId}
-            resultsHref={resultsHref}
-            phone={next.phone}
-            canRequest={false}
-            skip={alreadyTried.join(",")}
-            showProfileLink
-          />
-        </div>
       ) : null}
 
       {call.status === CALL_OUTCOME.ANSWERED && !call.review ? (

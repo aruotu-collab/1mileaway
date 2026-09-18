@@ -6,6 +6,7 @@ import { formatMoney, formatLocalDateTime } from "@/lib/utils";
 import {
   daysRemaining,
   expireEndedTrials,
+  hasStripeBilling,
   isSubscriptionActive,
   isTrialing,
   marketplaceStats,
@@ -36,6 +37,7 @@ export default async function PaymentsPage({
   const periodEnd = link.business.subscription?.currentPeriodEnd ?? null;
   const subscribed = isSubscriptionActive(link.business.paymentState, periodEnd);
   const trial = isTrialing(link.business.paymentState, periodEnd);
+  const cardSaved = hasStripeBilling(link.business.subscription?.provider, link.business.subscription?.providerSubscriptionId);
   const stats = await marketplaceStats(link.businessId);
   const daysLeft = daysRemaining(periodEnd);
 
@@ -43,7 +45,11 @@ export default async function PaymentsPage({
     <main className="mx-auto max-w-3xl px-4 py-8">
       <h1 className="serif text-4xl">Subscription</h1>
       {query.subscribed ? (
-        <p className="card mt-4 p-4">Your monthly listing is active. Customers can now call you from 1mileaway.</p>
+        <p className="card mt-4 p-4">
+          {trial
+            ? `Your card is saved. You will not be charged until ${periodEnd ? formatLocalDateTime(periodEnd) : "the trial ends"}.`
+            : "Your monthly listing is active. Customers can now call you from 1mileaway."}
+        </p>
       ) : null}
       {query.cancelled ? <p className="card mt-4 p-4">Checkout was cancelled. You can start again whenever you are ready.</p> : null}
 
@@ -68,14 +74,26 @@ export default async function PaymentsPage({
             <p className="serif text-2xl">Two-month free trial</p>
             <p className="mt-2 text-ink-soft">
               Call now is on until {periodEnd ? formatLocalDateTime(periodEnd) : "your trial ends"}
-              {daysLeft != null ? ` (${daysLeft} days left)` : ""}. 1mileaway has sent you {stats.totalCalls} calls so
-              far. After the trial, {subscriptionPriceLabel()} keeps that going.
+              {daysLeft != null ? ` (${daysLeft} days left)` : ""}. No card is needed for the trial. 1mileaway has sent
+              you {stats.totalCalls} calls so far.
             </p>
-            <form action={startSubscription} className="mt-4">
-              <button className="btn btn-primary" type="submit">
-                Continue for {subscriptionPriceLabel()}
-              </button>
-            </form>
+            {cardSaved ? (
+              <p className="mt-4 text-ink-soft">
+                Your card is already on file. The first {subscriptionPriceLabel()} charge is when the trial ends.
+              </p>
+            ) : (
+              <>
+                <p className="mt-2 text-ink-soft">
+                  When you are ready, subscribe. That is the only time we take a card, and we do not charge until the
+                  trial ends.
+                </p>
+                <form action={startSubscription} className="mt-4">
+                  <button className="btn btn-primary" type="submit">
+                    Subscribe after trial for {subscriptionPriceLabel()}
+                  </button>
+                </form>
+              </>
+            )}
           </>
         ) : subscribed ? (
           <>

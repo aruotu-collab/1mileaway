@@ -359,7 +359,7 @@ export async function ensureProfessionCatalog(db: PrismaClient) {
     categoryIds.set(category.slug, row.id);
   }
 
-  const countries = await db.country.findMany({ where: { tier: 1 } });
+  const countries = await db.country.findMany({ orderBy: { tier: "asc" } });
 
   for (const def of PROFESSION_DEFS) {
     const categoryId = categoryIds.get(def.categorySlug);

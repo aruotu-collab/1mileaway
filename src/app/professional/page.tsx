@@ -15,6 +15,7 @@ import { callCountCopy, unclaimedDemandCopy } from "@/lib/listing-insights";
 import {
   daysRemaining,
   expireEndedTrials,
+  hasStripeBilling,
   isSubscriptionActive,
   isTrialing,
   marketplaceStats,
@@ -102,7 +103,7 @@ export default async function ProfessionalHome({
           </dl>
           <p className="mt-3 text-ink-soft">
             We do not show page views, call length, or whether a phone was answered. After you claim you get two months
-            free, Call now on your own number, and a count of every tap through the web app.
+            free with no card, Call now on your own number, and a count of every tap through the web app.
           </p>
           <form action={claimMatchingListing} className="mt-4">
             <button className="btn btn-primary" type="submit">
@@ -140,6 +141,7 @@ export default async function ProfessionalHome({
   const periodEnd = biz.subscription?.currentPeriodEnd ?? null;
   const subscribed = isSubscriptionActive(biz.paymentState, periodEnd);
   const trial = isTrialing(biz.paymentState, periodEnd);
+  const cardSaved = hasStripeBilling(biz.subscription?.provider, biz.subscription?.providerSubscriptionId);
   const daysLeft = daysRemaining(periodEnd);
   const country = biz.country.iso2;
   const profileHref = `/${country}/p/${biz.slug}`;
@@ -229,7 +231,7 @@ export default async function ProfessionalHome({
         </h2>
         <p className="mt-2 text-ink-soft">
           {trial
-            ? `Call now is free until ${periodEnd ? formatLocalDateTime(periodEnd) : "the end of your trial"}${daysLeft != null ? ` (${daysLeft} days left)` : ""}. After that, ${subscriptionPriceLabel()} keeps customers ringing you.`
+            ? `Call now is free until ${periodEnd ? formatLocalDateTime(periodEnd) : "the end of your trial"}${daysLeft != null ? ` (${daysLeft} days left)` : ""}. No card is needed for the trial. Subscribe when you want ${subscriptionPriceLabel()} to continue after that.`
             : subscribed
               ? "Customers can call your number from 1mileaway. Each tap emails you and appears below."
               : `${subscriptionPriceLabel()}. Customers cannot ring you through the app until this is active.`}
@@ -238,10 +240,12 @@ export default async function ProfessionalHome({
           <Link href="/professional/payments" className="btn btn-ghost mt-4">
             Manage subscription
           </Link>
+        ) : trial && cardSaved ? (
+          <p className="mt-4 text-ink-soft">Your card is saved. The first charge is when the trial ends.</p>
         ) : (
           <form action={startSubscription} className="mt-4">
             <button className="btn btn-primary" type="submit">
-              {trial ? "Start paying after the trial" : "Subscribe"}
+              {trial ? "Add a card for after the trial" : "Subscribe"}
             </button>
           </form>
         )}

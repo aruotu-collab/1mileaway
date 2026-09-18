@@ -7,13 +7,17 @@ export async function MarketplaceSearch({
   defaultProfession = "plumbers",
   defaultLocation = "",
   emergency = false,
-  showUrgencyTabs = false,
+  showUrgencyTabs = true,
+  regularHref,
+  emergencyHref,
 }: {
   country?: string;
   defaultProfession?: string;
   defaultLocation?: string;
   emergency?: boolean;
   showUrgencyTabs?: boolean;
+  regularHref?: string;
+  emergencyHref?: string;
 }) {
   const [rows, locationRows] = await Promise.all([
     prisma.professionSlug.findMany({
@@ -39,6 +43,8 @@ export async function MarketplaceSearch({
       defaultLocation={defaultLocation}
       emergency={emergency}
       showUrgencyTabs={showUrgencyTabs}
+      regularHref={regularHref}
+      emergencyHref={emergencyHref}
       professions={rows.map((row) => ({
         slug: row.slug,
         label: row.pluralName,

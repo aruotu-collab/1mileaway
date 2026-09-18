@@ -6,13 +6,13 @@ import { usePathname } from "next/navigation";
 const links = [
   ["/admin", "Overview"],
   ["/admin/professionals", "Professionals"],
-  ["/admin/leads", "Leads"],
   ["/admin/calls", "Calls"],
-  ["/admin/payments", "Payments"],
+  ["/admin/leads", "Asks"],
   ["/admin/trials", "Trials"],
-  ["/admin/countries", "Countries"],
-  ["/admin/emails", "Emails"],
+  ["/admin/payments", "Subscriptions"],
   ["/admin/outreach", "Outreach"],
+  ["/admin/emails", "Emails"],
+  ["/admin/countries", "Countries"],
   ["/admin/audit", "Audit"],
   ["/admin/settings", "Settings"],
 ] as const;
