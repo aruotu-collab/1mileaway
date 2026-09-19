@@ -40,7 +40,6 @@
 }
 
 body {
-  padding-top: var(--tape-height);
   background:
     radial-gradient(1200px 500px at 10% -10%, #fff8e8 0%, transparent 50%),
     radial-gradient(900px 400px at 100% 0%, #e7efe3 0%, transparent 45%),
@@ -476,18 +475,13 @@ html[dir="rtl"] .navigation-progress-bar {
   animation: btn-spin 0.6s linear infinite;
 }
 
-.activity-tape-slot {
-  position: fixed;
-  inset-inline: 0;
-  top: 0;
-  left: 0;
-  width: 100%;
-  z-index: 50;
-}
-
 .activity-tape {
+  position: sticky;
+  top: 0;
+  z-index: 50;
   display: flex;
   align-items: stretch;
+  width: 100%;
   min-height: var(--tape-height);
   overflow: hidden;
   background: #12160f;

@@ -1,4 +1,5 @@
 import { requestMagicLink } from "@/app/actions/auth";
+import { BackLink } from "@/components/back-link";
 import { SubmitButton } from "@/components/submit-button";
 import { prisma } from "@/lib/db";
 

@@ -62,8 +62,8 @@ describe("stripeEventAction", () => {
             customer: "cus_2",
           },
         },
-      }).trialing,
-    ).toBe(true);
+      }),
+    ).toMatchObject({ type: "activate", trialing: true });
   });
 
   it("renews, marks past due, and cancels from later Stripe events", () => {

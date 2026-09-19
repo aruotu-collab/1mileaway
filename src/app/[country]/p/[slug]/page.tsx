@@ -6,7 +6,7 @@ import { ClaimListingCta } from "@/components/claim-listing-cta";
 import { BackLink } from "@/components/back-link";
 import { isAvailabilityLive } from "@/lib/availability/engine";
 import { CLAIM_STATUS } from "@/lib/constants";
-import { listingPoint, milesBetween } from "@/lib/locations/distance";
+import { isGeoPoint, listingPoint, milesBetween } from "@/lib/locations/distance";
 import { listingCallOptions } from "@/lib/phone";
 import { isPublicListing } from "@/lib/listings/visibility";
 import { marketplaceStats } from "@/lib/subscription";
@@ -71,7 +71,9 @@ export default async function ProfilePage({
   const origin =
     Number.isFinite(fromLat) && Number.isFinite(fromLng) && resultsUrl.searchParams.get("lat")
       ? { lat: fromLat, lng: fromLng }
-      : fromLocation;
+      : isGeoPoint(fromLocation)
+        ? { lat: fromLocation.lat, lng: fromLocation.lng }
+        : null;
   const distanceMiles = milesBetween(origin, listingPoint(business));
   const unclaimed = business.claimStatus === CLAIM_STATUS.UNCLAIMED;
   const stats = unclaimed ? await marketplaceStats(business.id) : null;
