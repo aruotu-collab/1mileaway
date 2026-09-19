@@ -22,7 +22,9 @@ export function NavigationProgress() {
   }, []);
 
   useEffect(() => {
-    setAppPending(false);
+    if (!isAppPending()) return;
+    const timer = window.setTimeout(() => setAppPending(false), 450);
+    return () => window.clearTimeout(timer);
   }, [pathname]);
 
   useEffect(() => {
@@ -69,7 +71,7 @@ export function NavigationProgress() {
 
   return (
     <div className="navigation-progress" role="status" aria-live="polite">
-      <span className="sr-only">Still loading</span>
+      <p className="navigation-progress-label">Searching… please wait</p>
       <span className="navigation-progress-bar" />
     </div>
   );

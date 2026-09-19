@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { setAppPending } from "@/lib/pending-ui";
 
 type Tab = {
   href?: string;
@@ -23,14 +23,26 @@ function TabButton({ tab }: { tab: Tab }) {
 
   if (tab.href) {
     return (
-      <Link href={tab.href} className={className} role="tab" aria-selected={tab.selected}>
+      <a
+        href={tab.href}
+        className={className}
+        role="tab"
+        aria-selected={tab.selected ? "true" : "false"}
+        onClick={() => setAppPending(true)}
+      >
         {tab.label}
-      </Link>
+      </a>
     );
   }
 
   return (
-    <button type="button" className={className} role="tab" aria-selected={tab.selected} onClick={tab.onSelect}>
+    <button
+      type="button"
+      className={className}
+      role="tab"
+      aria-selected={tab.selected ? "true" : "false"}
+      onClick={tab.onSelect}
+    >
       {tab.label}
     </button>
   );

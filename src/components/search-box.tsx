@@ -4,6 +4,7 @@ import { useEffect, useId, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { goToMarketplace, labelForCoordinates } from "@/app/actions/search";
 import { setAppPending } from "@/lib/pending-ui";
+import { PendingNotice } from "@/components/pending-notice";
 import { LocationField } from "@/components/location-field";
 import { UrgencyTabs } from "@/components/urgency-tabs";
 import type { LocationChoice } from "@/lib/locations/suggest";
@@ -67,7 +68,6 @@ export function SearchBox({
 
   useEffect(() => {
     setPending(false);
-    setAppPending(false);
   }, [pathname]);
 
   function onLocationChange(value: string) {
@@ -117,20 +117,25 @@ export function SearchBox({
         setPending(true);
         setAppPending(true);
         void (async () => {
+          const started = Date.now();
           try {
             const result = await goToMarketplace(formData);
+            const wait = Math.max(0, 1100 - (Date.now() - started));
+            if (wait) await new Promise((resolve) => window.setTimeout(resolve, wait));
             if ("error" in result) {
               setError(result.error);
               setPending(false);
               setAppPending(false);
               return;
             }
-            const nextPath = result.href.split("?")[0] ?? result.href;
-            if (nextPath === pathname) {
+            const next = new URL(result.href, window.location.origin);
+            const samePage =
+              `${next.pathname}${next.search}` === `${window.location.pathname}${window.location.search}`;
+            router.push(result.href);
+            if (samePage) {
               setPending(false);
               setAppPending(false);
             }
-            router.push(result.href);
           } catch {
             setError("Search did not finish. Try again.");
             setPending(false);
@@ -154,11 +159,12 @@ export function SearchBox({
           </p>
         </div>
       ) : null}
+      {pending ? <PendingNotice>Searching nearby professionals…</PendingNotice> : null}
       <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-start">
         <label className="order-2 block sm:order-1">
           <span className="mb-1 block text-sm font-medium">What do you need?</span>
           <select
-            className="w-full rounded-2xl border border-line bg-paper px-4 py-3"
+            className="search-field"
             name="profession"
             value={profession}
             onChange={(event) => setProfession(event.target.value)}
@@ -200,15 +206,10 @@ export function SearchBox({
             disabled={pending}
             aria-busy={pending}
           >
-            {pending ? "Searching…" : "Search nearby"}
+            {pending ? "Searching nearby…" : "Search nearby"}
           </button>
         </div>
       </div>
-      {pending ? (
-        <p className="text-sm text-ink-soft" aria-live="polite">
-          Still looking up nearby professionals…
-        </p>
-      ) : null}
       {error ? <p className="text-sm text-rust">{error}</p> : null}
     </form>
   );

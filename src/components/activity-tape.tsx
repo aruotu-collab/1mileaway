@@ -12,8 +12,8 @@ export function ActivityTape({
   liveLabel: string;
   ariaLabel: string;
 }) {
-  if (items.length === 0) return null;
-  const loop = loopItems(items);
+  const lines = items.length > 0 ? items : [ariaLabel];
+  const loop = loopItems(lines);
   const seconds = Math.max(36, items.length * 5);
 
   return (

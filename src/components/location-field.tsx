@@ -77,7 +77,7 @@ export function LocationField({
       <div className="relative">
         <input
           id={inputId}
-          className="w-full rounded-2xl border border-line bg-paper px-4 py-3 pr-11"
+          className="search-field"
           name={name}
           value={value}
           role="combobox"

@@ -38,9 +38,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     <html lang={ui.htmlLang} dir={ui.dir} className={`${outfit.variable} ${newsreader.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <GoogleAnalytics />
-        <NavigationProgress />
-        <div className="sticky top-0 z-40">
+        <div className="activity-tape-slot">
           <LiveActivityTape />
+        </div>
+        <NavigationProgress />
+        <div className="sticky z-40" style={{ top: "var(--tape-height)" }}>
           <SiteHeader />
         </div>
         <div className="flex-1">{children}</div>

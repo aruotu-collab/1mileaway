@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { setAppPending } from "@/lib/pending-ui";
+import { PendingNotice } from "@/components/pending-notice";
 
 export function PushForm({
   action,
@@ -20,7 +21,6 @@ export function PushForm({
 
   useEffect(() => {
     setPending(false);
-    setAppPending(false);
   }, [pathname]);
 
   return (
@@ -57,11 +57,7 @@ export function PushForm({
       }}
     >
       <div className={pending ? "pointer-events-none opacity-70" : undefined}>{children}</div>
-      {pending ? (
-        <p className="mt-2 text-sm text-ink-soft" aria-live="polite">
-          Please wait…
-        </p>
-      ) : null}
+      {pending ? <PendingNotice>Please wait…</PendingNotice> : null}
       {error ? <p className="mt-2 text-sm text-rust">{error}</p> : null}
     </form>
   );
